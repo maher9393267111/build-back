@@ -1,0 +1,1666 @@
+"use client";
+import { useState, useCallback, useRef, Fragment, useEffect } from "react";
+import { Tab, Dialog, Transition } from "@headlessui/react";
+import {
+  CheckIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  MapPinIcon,
+  InformationCircleIcon,
+  PhoneIcon,
+  ShareIcon,
+  UserIcon,
+  BuildingOfficeIcon,
+  DocumentTextIcon,
+  PhotoIcon,
+  CheckBadgeIcon,
+  StarIcon,
+  XMarkIcon,
+  AdjustmentsHorizontalIcon,
+  CalendarDaysIcon,
+  FunnelIcon,
+} from "@heroicons/react/24/outline";
+import Lightbox from "react-18-image-lightbox";
+import "react-18-image-lightbox/style.css";
+
+const tabs = [
+  { name: "Overview", icon: UserIcon, id: "overview" },
+  { name: "Services", icon: BuildingOfficeIcon, id: "services" },
+  { name: "Reviews", icon: StarIcon, id: "reviews" },
+  { name: "Photos", icon: PhotoIcon, id: "photos" },
+  { name: "Company info & Accreditations", icon: DocumentTextIcon, id: "company-info" },
+];
+
+// Dummy review data (replace with actual data fetching later)
+const allReviewsData = [
+  {
+    rating: 0,
+    title: "Made an appointment then didn't show up",
+    date: "15 May 2024",
+    content:
+      "Made an appointment to quote for a bathroom. They didn't show up . No call or contact. Having said that not sure why an air conditioning company wants to quote for a bathroom.",
+    location: "CF14",
+    verified: true,
+  },
+  {
+    rating: 10,
+    title: "Air Conditioning",
+    date: "11 May 2024",
+    content:
+      "Starting from the initial visit to quote for the work and understand our needs, the communication was very good. On installation day the guys were very polite, tidy and kept us well informed. The air conditioning was installed quicker than we expected and we would highly recommend them and will use them again when required.",
+    location: "BS24",
+    verified: true,
+  },
+  {
+    rating: 10,
+    title: "Relocation of Heat pump for Air Con unit",
+    date: "29 August 2023",
+    content:
+      "Mo and the team were really good, and professional, and knew exactly what to do. Job completed quickly and very tidy. Many thanks",
+    location: "BS16",
+    verified: true,
+  },
+  {
+    rating: 10,
+    title: "Amazing work",
+    date: "01 August 2023",
+    content:
+      "I had a fantastic experience with the gas engineer who came and installed the cooker for me. He was incredible prompt and efficient, offering same day service that I truly appreciated. I was pleasantly surprised by his reasonable and affordable fee, especially considering the high-quality service he provided. 100% recommend??",
+    location: "CF5",
+    verified: true,
+  },
+  {
+    rating: 10,
+    title: "Installing split Air Con for two rooms",
+    date: "22 July 2023",
+    content:
+      "Installling air conditioning in your home can be a challenge, which we found with another company previously. Let's Heat had great reviews on Checkatrade, so a good starting point. Mo and his Let's Heat Team were a revelation. On time, courteous, and the installation was very professionally completed. Mo uses the best top quality brand, and they took great care to minimise the appearance, both externally and internally. The install really looks as good as possible. I would recommend Mo and Let's Heat without hesitation.",
+    location: "CF11",
+    verified: true,
+  },
+  {
+    rating: 10,
+    title: "Air conditioning installation",
+    date: "16 June 2023",
+    content:
+      "Absolutely brilliant job done by the lads. No fuss and pleasant chaps. Highly recommend",
+    location: "BS10",
+    verified: true,
+  },
+  // ... add more reviews if needed
+];
+
+// Enhanced Reviews Popup Component
+function ReviewsPopup({ isOpen, onClose, reviews }) {
+  const [sortBy, setSortBy] = useState("most-recent");
+  const [dateRange, setDateRange] = useState("all");
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [hoveredRating, setHoveredRating] = useState(null);
+
+  if (!isOpen) return null;
+
+  // TODO: Implement actual sorting and filtering based on state
+  const filteredReviews = reviews; // Placeholder
+
+  const handleResetFilters = () => {
+    setSortBy("most-recent");
+    setDateRange("all");
+    if (isMobileFilterOpen) {
+      setIsMobileFilterOpen(false);
+    }
+  };
+
+  const handleShowReviews = () => {
+    if (isMobileFilterOpen) {
+      setIsMobileFilterOpen(false);
+    }
+  };
+
+  // Generate stars based on rating (from 0-10)
+  const renderRatingStars = (rating) => {
+    const starCount = 5;
+    const filledStars = Math.round((rating / 10) * starCount);
+    
+    return (
+      <div className="flex items-center">
+        {[...Array(starCount)].map((_, i) => (
+          <StarIcon
+            key={i}
+            className={`h-4 w-4 ${
+              i < filledStars 
+                ? "text-yellow-400 fill-yellow-400" 
+                : "text-gray-300 fill-gray-300"
+            }`}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  const FilterSidebarContent = (
+    <div className="flex flex-col h-full">
+      <div className="space-y-6 flex-grow">
+        {/* Sort Options */}
+        <div className="mb-6">
+          <h3 className="font-semibold text-neutral-800 mb-4 text-sm uppercase flex items-center gap-2">
+            <AdjustmentsHorizontalIcon className="w-5 h-5 text-blue-700" />
+            Sort by
+          </h3>
+          <div className="space-y-3">
+            {[
+              { value: "most-recent", label: "Most recent" },
+              { value: "highest-rated", label: "Highest rated" },
+              { value: "lowest-rated", label: "Lowest rated" },
+            ].map((option) => (
+              <label
+                key={option.value}
+                className="flex items-center space-x-3 cursor-pointer text-sm hover:bg-blue-50 rounded-md p-2 transition-colors duration-200"
+              >
+                <div className="relative flex items-center justify-center">
+                  <input
+                    type="radio"
+                    name="sort"
+                    value={option.value}
+                    checked={sortBy === option.value}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="sr-only"
+                  />
+                  <div className={`h-5 w-5 rounded-full border ${
+                    sortBy === option.value
+                      ? "border-blue-700 bg-blue-700"
+                      : "border-gray-300 bg-white"
+                  } flex items-center justify-center transition-colors duration-200`}>
+                    {sortBy === option.value && (
+                      <div className="h-2 w-2 rounded-full bg-white"></div>
+                    )}
+                  </div>
+                </div>
+                <span className={sortBy === option.value ? "text-blue-700 font-medium" : "text-neutral-700"}>
+                  {option.label}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Date Range Options */}
+        <div>
+          <h3 className="font-semibold text-neutral-800 mb-4 text-sm uppercase flex items-center gap-2">
+            <CalendarDaysIcon className="w-5 h-5 text-blue-700" />
+            Date range
+          </h3>
+          <div className="space-y-3">
+            {[
+              { value: "all", label: "All reviews" },
+              { value: "30d", label: "Last 30 days" },
+              { value: "3m", label: "Last 3 months" },
+              { value: "6m", label: "Last 6 months" },
+              { value: "12m", label: "Last 12 months" },
+            ].map((option) => (
+              <label
+                key={option.value}
+                className="flex items-center space-x-3 cursor-pointer text-sm hover:bg-blue-50 rounded-md p-2 transition-colors duration-200"
+              >
+                <div className="relative flex items-center justify-center">
+                  <input
+                    type="radio"
+                    name="dateRange"
+                    value={option.value}
+                    checked={dateRange === option.value}
+                    onChange={(e) => setDateRange(e.target.value)}
+                    className="sr-only"
+                  />
+                  <div className={`h-5 w-5 rounded-full border ${
+                    dateRange === option.value
+                      ? "border-blue-700 bg-blue-700"
+                      : "border-gray-300 bg-white"
+                  } flex items-center justify-center transition-colors duration-200`}>
+                    {dateRange === option.value && (
+                      <div className="h-2 w-2 rounded-full bg-white"></div>
+                    )}
+                  </div>
+                </div>
+                <span className={dateRange === option.value ? "text-blue-700 font-medium" : "text-neutral-700"}>
+                  {option.label}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="mt-auto pt-6 border-t bg-gray-50 md:bg-transparent md:relative md:border-none rounded-lg -mx-6 px-6 pb-6">
+        <button
+          type="button"
+          onClick={handleShowReviews}
+          className="w-full justify-center flex items-center rounded-md font-semibold border focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 text-white bg-blue-700 border-blue-700 fill-white hover:bg-blue-800 hover:border-blue-800 py-2.5 px-4 text-sm shadow-sm hover:shadow disabled:bg-neutral-400 disabled:shadow-none"
+        >
+          Show reviews
+        </button>
+        <button
+          type="button"
+          onClick={handleResetFilters}
+          className="mt-3 w-full justify-center flex items-center rounded-md font-semibold border focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-all duration-200 text-blue-700 bg-white border-blue-700 fill-blue-700 hover:bg-blue-50 py-2.5 px-4 text-sm disabled:bg-neutral-400 disabled:text-neutral-600 disabled:border-neutral-400"
+        >
+          Reset filters
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog
+        as="div"
+        className="relative z-50"
+        onClose={() => {
+          onClose();
+          setIsMobileFilterOpen(false);
+        }}
+      >
+        {/* Improved Overlay with Blur Effect */}
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-0 md:p-4 text-center">
+            {/* Enhanced Modal Panel with Better Animation */}
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95 translate-y-4"
+              enterTo="opacity-100 scale-100 translate-y-0"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100 translate-y-0"
+              leaveTo="opacity-0 scale-95 translate-y-4"
+            >
+              <Dialog.Panel className="bg-white md:rounded-2xl shadow-2xl max-w-5xl w-full h-full md:h-auto md:max-h-[90vh] flex flex-col overflow-hidden transform transition-all text-left">
+                {/* Enhanced Header with Gradient Background */}
+                <div className="flex justify-between items-center p-5 md:px-8 border-b sticky top-0 bg-gradient-to-r from-blue-50 to-white z-10 shadow-sm">
+                  {/* Mobile Filter Toggle Button with Animation */}
+                  <button
+                    onClick={() => setIsMobileFilterOpen(true)}
+                    className="md:hidden text-blue-700 hover:text-blue-900 transition-all duration-200 p-2 -ml-1 rounded-full hover:bg-blue-100"
+                    aria-label="Open filters"
+                  >
+                    <FunnelIcon className="h-6 w-6" />
+                  </button>
+                  
+                  <div className="w-6 h-6 md:hidden" /> {/* Spacer for mobile */}
+                  
+                  {/* Enhanced Title with Icon and Better Typography */}
+                  <Dialog.Title
+                    as="h2"
+                    className="text-lg md:text-xl font-bold text-neutral-900 text-center flex-grow flex items-center justify-center gap-2"
+                  >
+                    <StarIcon className="h-6 w-6 text-yellow-500" />
+                    Reviews for Lets Heat
+                  </Dialog.Title>
+                  
+                  <div className="w-6 h-6 hidden md:block" /> {/* Spacer for desktop */}
+                  
+                  {/* Improved Close Button with Animation */}
+                  <button
+                    onClick={onClose}
+                    className="text-neutral-500 hover:text-neutral-800 transition-all duration-200 p-2 -mr-1 rounded-full hover:bg-neutral-100"
+                    aria-label="Close reviews popup"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+
+                {/* Content Area with Improved Layout */}
+                <div className="flex flex-1 overflow-hidden">
+                  {/* Enhanced Desktop Sidebar with Better Visual Design */}
+                  <aside className="hidden md:block w-72 border-r overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white flex-shrink-0">
+                    {FilterSidebarContent}
+                  </aside>
+
+                  {/* Enhanced Main Content Area */}
+                  <main className="flex-1 overflow-y-auto p-5 md:p-8 bg-gradient-to-b from-gray-50 to-white">
+                    {/* Review Summary Stats */}
+                    <div className="mb-6 p-4 bg-white rounded-xl shadow-sm border border-blue-100">
+                      <div className="flex items-center gap-3 text-blue-800">
+                        <div className="bg-blue-700 text-white text-2xl font-bold h-12 w-12 rounded-full flex items-center justify-center">
+                          8
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1">
+                            {renderRatingStars(8)}
+                            <span className="text-sm text-blue-700 ml-1">({reviews.length})</span>
+                          </div>
+                          <span className="text-xs text-blue-600">Average customer rating</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Enhanced Reviews List */}
+                    <ul className="space-y-5">
+                      {filteredReviews.length > 0 ? (
+                        filteredReviews.map((review, index) => (
+                          <li
+                            key={index}
+                            className="bg-white rounded-xl flex flex-col p-5 gap-3 border border-neutral-200 shadow-sm hover:shadow-md transition-shadow duration-300 ease-in-out"
+                            onMouseEnter={() => setHoveredRating(index)}
+                            onMouseLeave={() => setHoveredRating(null)}
+                          >
+                            <section className="flex flex-col gap-2">
+                              <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-3">
+                                  <span
+                                    className={`font-bold flex items-center justify-center rounded-full min-w-[40px] h-10 w-10 shrink-0 text-base ${
+                                      review.rating >= 7
+                                        ? "bg-green-100 text-green-800"
+                                        : review.rating >= 4
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : "bg-red-100 text-red-800"
+                                    }`}
+                                  >
+                                    {review.rating}
+                                  </span>
+                                  <div className="flex flex-col">
+                                    {renderRatingStars(review.rating)}
+                                    <p className="text-neutral-500 text-xs">
+                                      {review.date}
+                                    </p>
+                                  </div>
+                                </div>
+                                
+                                {review.verified && (
+                                  <span className="font-medium flex items-center gap-1.5 text-green-700 text-xs bg-green-50 px-2 py-1 rounded-full">
+                                    <CheckBadgeIcon className="h-4 w-4" />
+                                    Verified
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <h3 className="text-neutral-800 text-lg font-semibold mt-1">
+                                {review.title}
+                              </h3>
+                            </section>
+
+                            <div className="flex flex-col gap-2">
+                              <div className="text-neutral-700 leading-relaxed">
+                                {review.content}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100">
+                              <span className="inline-flex items-center gap-1.5 text-neutral-500 text-xs bg-neutral-50 px-2 py-1 rounded-full">
+                                <MapPinIcon className="h-3.5 w-3.5" />
+                                {review.location}
+                              </span>
+                              
+                              <div className="flex gap-2">
+                                <button className="text-blue-700 text-sm hover:underline transition-colors duration-200 flex items-center gap-1">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
+                                  </svg>
+                                  Helpful
+                                </button>
+                              </div>
+                            </div>
+                          </li>
+                        ))
+                      ) : (
+                        <div className="flex flex-col items-center justify-center bg-white rounded-xl p-8 text-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-neutral-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 20h9a2 2 0 002-2V6a2 2 0 00-2-2h-9M12 20H3a2 2 0 01-2-2V6a2 2 0 012-2h9" />
+                          </svg>
+                          <p className="text-neutral-500 text-lg font-medium">
+                            No reviews match your filters
+                          </p>
+                          <p className="text-neutral-400 mt-1">
+                            Try adjusting your filter settings to see more reviews
+                          </p>
+                          <button
+                            onClick={handleResetFilters}
+                            className="mt-4 inline-flex items-center text-blue-700 font-semibold hover:text-blue-800 text-sm"
+                          >
+                            Reset all filters
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7.805v2.202a1 1 0 01-1.758.653L1.91 8.385a1 1 0 010-1.271l2.331-2.274A1 1 0 015 4.51V3a1 1 0 011-1zm6 8a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+                    </ul>
+                    
+                    {/* Added Pagination */}
+                    {filteredReviews.length > 0 && (
+                      <div className="flex justify-center mt-8">
+                        <nav className="flex items-center gap-1">
+                          <button className="h-10 w-10 rounded-md flex items-center justify-center border border-neutral-300 bg-white text-neutral-700 hover:bg-blue-50 transition-colors duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                          <button className="h-10 w-10 rounded-md flex items-center justify-center border-blue-700 bg-blue-700 text-white font-semibold">
+                            1
+                          </button>
+                          <button className="h-10 w-10 rounded-md flex items-center justify-center border border-neutral-300 bg-white text-neutral-700 hover:bg-blue-50 transition-colors duration-200">
+                            2
+                          </button>
+                          <button className="h-10 w-10 rounded-md flex items-center justify-center border border-neutral-300 bg-white text-neutral-700 hover:bg-blue-50 transition-colors duration-200">
+                            3
+                          </button>
+                          <span className="h-10 px-2 flex items-center justify-center text-neutral-500">...</span>
+                          <button className="h-10 w-10 rounded-md flex items-center justify-center border border-neutral-300 bg-white text-neutral-700 hover:bg-blue-50 transition-colors duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </nav>
+                      </div>
+                    )}
+                  </main>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </div>
+
+        {/* Enhanced Mobile Filter Overlay with Better Animation */}
+        <Transition show={isMobileFilterOpen} as={Fragment}>
+          <Dialog
+            as="div"
+            className="md:hidden fixed inset-0 z-[60]"
+            onClose={setIsMobileFilterOpen}
+          >
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+            >
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+            </Transition.Child>
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300 transform"
+              enterFrom="-translate-x-full"
+              enterTo="translate-x-0"
+              leave="ease-in duration-200 transform"
+              leaveFrom="translate-x-0"
+              leaveTo="-translate-x-full"
+            >
+              <Dialog.Panel className="fixed inset-y-0 left-0 z-[70] bg-white w-full max-w-xs flex flex-col shadow-xl rounded-r-2xl">
+                {/* Enhanced Mobile Filter Header */}
+                <div className="flex justify-between items-center p-5 border-b flex-shrink-0 bg-gradient-to-r from-blue-50 to-white">
+                  <Dialog.Title as="h3" className="text-lg font-bold flex items-center gap-2">
+                    <FunnelIcon className="h-5 w-5 text-blue-700" />
+                    Filter Reviews
+                  </Dialog.Title>
+                  <button
+                    onClick={() => setIsMobileFilterOpen(false)}
+                    className="text-neutral-500 hover:text-neutral-800 transition-all duration-200 p-2 -mr-1 rounded-full hover:bg-neutral-100"
+                    aria-label="Close filters"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+                {/* Enhanced Scrollable Filter Content */}
+                <div className="overflow-y-auto px-6 py-6 flex-1 flex flex-col">
+                  {FilterSidebarContent}
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </Dialog>
+        </Transition>
+      </Dialog>
+    </Transition>
+  );
+}
+
+export default function ServiceProviderProfile() {
+  const [activeTab, setActiveTab] = useState(tabs[0].id);
+  const [isServiceExpanded, setIsServiceExpanded] = useState(true);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
+  const [isReviewsPopupOpen, setIsReviewsPopupOpen] = useState(false);
+  const [showStickyButtons, setShowStickyButtons] = useState(false);
+
+  const sectionRefs = useRef({});
+  tabs.forEach((tab) => {
+    if (tab.id !== 'accreditations') {
+    sectionRefs.current[tab.id] = useRef(null);
+    }
+  });
+
+  const headerRef = useRef(null);
+  const tabListRef = useRef(null);
+
+  const images = [
+    "https://lh3.googleusercontent.com/Kuth9xQudG4NxZboyYTO0cp9WJQXqnsEeatr0GmRqDOCZEdUearsOCs7v11RCZRHFcVIWeGz16t9nA911J9lgLJ4Wgl1yR7EzLZtWEWTH0Tl-uFy4ivpMJAU_uSKkec=w1024-nu-rw-e365",
+    "https://lh3.googleusercontent.com/azSS91Q9N3LX3hrpoZ-jj4KXPeM0qvImyHx-hpLNuA0-0UTfMjC2py2WiqtVR-9QFlhEtvP41Fepz-b6jpMcjzVf0asT6O2IoNv5IDtX_FEhZfGZsKVX8FvDSSpg4A=w1024-nu-rw-e365",
+    "https://lh3.googleusercontent.com/3kA96Dwly-kZvn2Yc0bVuokifu_iBuYLUsO35DdbuJ8Bz55aPOASBuTAIimd-CEje-CjaNdaXp8pE_0ksb2YvfO_jxZbifIVVP6leD-mI_cu7tBXkWiCzHL_NgHzsQ=w1024-nu-rw-e365",
+    "https://lh3.googleusercontent.com/5nvEQbZNyY7uxlz2naVljVxSjyxmRXCTnrww_jKP6h9kxbdorIkEgUTus2eelvFGvUQUEjEOM-zRLiyGUXZQ75jVZUwHCdJTHorKlHE7OcWbnf3N0a22N7kOmDakGw=w1024-nu-rw-e365",
+    "https://lh3.googleusercontent.com/viT9MxeCAUhewSpbb1qVHEdwsshcfWDjj6WIscKeDPlCdm-mBOhN9XIyyMqrN29Ze6RZ-i2oxnryfen4SnoknLfVOQUZq9e9QqmsrcZYXJR_5W6LrB3ykS5lIU2Y6A=w1024-nu-rw-e365",
+  ];
+
+  const openLightbox = useCallback((index) => {
+    setPhotoIndex(index);
+    setIsLightboxOpen(true);
+  }, []);
+
+  const openReviewsPopup = () => setIsReviewsPopupOpen(true);
+  const closeReviewsPopup = () => setIsReviewsPopupOpen(false);
+
+  const thumbnailsRef = useRef(null);
+
+  useEffect(() => {
+    const headerHeight = headerRef.current?.offsetHeight || 60;
+    const observerOptions = {
+      root: null,
+      rootMargin: `-${headerHeight}px 0px -${
+        window.innerHeight - headerHeight - 100
+      }px 0px`,
+      threshold: 0,
+    };
+
+    const observerCallback = (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          setActiveTab(entry.target.id);
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(
+      observerCallback,
+      observerOptions
+    );
+
+    Object.keys(sectionRefs.current).forEach((tabId) => {
+        if (tabId !== 'accreditations' && sectionRefs.current[tabId]?.current) {
+            observer.observe(sectionRefs.current[tabId].current);
+      }
+    });
+
+    return () => {
+      Object.keys(sectionRefs.current).forEach((tabId) => {
+          if (tabId !== 'accreditations' && sectionRefs.current[tabId]?.current) {
+             observer.unobserve(sectionRefs.current[tabId].current);
+        }
+      });
+      observer.disconnect();
+    };
+  }, [tabs]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const servicesSection = sectionRefs.current["services"]?.current;
+      if (servicesSection) {
+        const servicesSectionTop = servicesSection.getBoundingClientRect().top;
+        const headerHeight = headerRef.current?.offsetHeight || 0;
+        setShowStickyButtons(servicesSectionTop <= headerHeight);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+    const element = sectionRefs.current[tabId]?.current;
+    const headerHeight = headerRef.current?.offsetHeight || 0;
+
+    if (element) {
+      const elementPosition =
+        element.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - headerHeight - 10;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  // Function to scroll selected tab into view when tabs change
+  const scrollSelectedTabIntoView = useCallback((index) => {
+    if (tabListRef.current) {
+      const tabElement = tabListRef.current.children[index];
+      if (tabElement) {
+        const tabList = tabListRef.current;
+        const tabOffset = tabElement.offsetLeft;
+        const tabWidth = tabElement.offsetWidth;
+        const listScrollLeft = tabList.scrollLeft;
+        const listWidth = tabList.offsetWidth;
+
+        // If tab is not fully visible, scroll to it
+        if (
+          tabOffset < listScrollLeft ||
+          tabOffset + tabWidth > listScrollLeft + listWidth
+        ) {
+          // Center the tab in the viewport
+          tabList.scrollTo({
+            left: tabOffset - (listWidth - tabWidth) / 2,
+            behavior: "smooth",
+          });
+        }
+      }
+    }
+  }, []);
+
+  // Convert activeTab to index for HeadlessUI
+  const activeTabIndex = tabs.findIndex((tab) => tab.id === activeTab);
+
+  // Handle tab change from HeadlessUI
+  const handleTabChange = (index) => {
+    const tabId = tabs[index].id;
+    handleTabClick(tabId);
+    scrollSelectedTabIntoView(index);
+  };
+
+  return (
+    <div className="bg-gray-50 min-h-screen pb-[15px] md:pb-[15px]">
+      {/* Overview Section */}
+      <section
+        id="overview"
+        ref={sectionRefs.current["overview"]}
+        className="relative flex border-neutral-200 max-w-screen-lg bg-neutral-0 flex-col w-full overflow-hidden md:mt-6 md:rounded-t-lg md:border-x mx-auto"
+      >
+        {/* Cover Image */}
+        <div className="relative w-full h-[180px] md:h-[280px] z-0">
+          <img
+            alt="Trade cover image"
+            fetchpriority="high"
+            width="1024"
+            height="280"
+            className="object-cover w-full h-full md:rounded-b-lg"
+            src="https://lh3.googleusercontent.com/PVuZYP01KSJqSKJFPCD80d8OBAKFC7tSR0N-ecSoOBFGVX20biEv3swjpx-iRLW4-w2sRe-d8cjG9FLeU_B6kEHOrNKRLef7_zlsl01XpaXJIIEuxsC_Ryab4UDf=w1024-nu-rw-e365"
+          />
+        </div>
+        {/* Profile Image - Absolutely Positioned */}
+        <div className="relative">
+          <img
+            alt="Trade profile image"
+            fetchpriority="high"
+            width="96"
+            height="96"
+            className="absolute bottom-0 left-[14%] md:left-[10%] transform -translate-x-1/2 translate-y-1/2 z-20 object-contain bg-neutral-0 font-medium rounded-lg border-2 border-neutral-200 flex justify-center items-center select-none min-w-24 min-h-24 w-24 h-24"
+            src="https://lh3.googleusercontent.com/HDTECijs8t7hybZ6xmyZA2MWM7JQniH1vbdD83_vO8ydK83kaNrI7jkFby8T3BAMB-pkIq5QysWdEdlV8YebVygtkzVbneKRi9AkCjfcLn06hyhkk_8APd2v1oih=w1024-nu-rw-e365"
+          />
+        </div>
+
+        {/* Profile Content */}
+        <div
+          className="display flex flex-col relative z-1 w-full px-4 pb-4 md:px-6 md:pb-6"
+          data-testid="trade-details"
+        >
+          {/* Photos Button Container - Adjusted alignment */}
+          <div className="flex flex-row justify-end">
+            <button
+              type="button"
+              className="flex items-center gap-2 h-10 px-5 py-2 rounded-lg border border-blue-700 bg-blue-50 text-blue-700 font-semibold shadow-sm transition hover:bg-blue-700 hover:text-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+              onClick={() => {
+                setActiveTab("photos");
+                openLightbox(0);
+              }}
+            >
+              <PhotoIcon className="h-5 w-5" />
+              <span>See all photos</span>
+            </button>
+          </div>
+
+          {/* Company Info and Sidebar */}
+          <div className="flex flex-col md:flex-row pt-4 md:pt-6">
+            {/* Main Content */}
+            <div className="flex-1 flex-grow">
+              <h1 className="text-text-neutral-primary font-semibold text-2-5xl leading-9 tracking-tight-2 ml-1">
+                Lets Heat
+              </h1>
+              {/* Rating */}
+              <div className="flex flex-row items-center gap-3 mt-3 w-fit px-4 pt-0 pb-2 rounded-lg bg-blue-50 border border-blue-200 shadow-sm">
+                <div className="flex items-center gap-1">
+                  <span className="text-blue-700 font-extrabold text-3xl">
+                    8
+                  </span>
+                  <span className="text-blue-700 font-semibold text-lg">
+                    /10
+                  </span>
+                  <svg
+                    className="h-5 w-5 text-yellow-400 ml-1"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.175c.969 0 1.371 1.24.588 1.81l-3.38 2.455a1 1 0 00-.364 1.118l1.287 3.966c.3.922-.755 1.688-1.54 1.118l-3.38-2.454a1 1 0 00-1.175 0l-3.38 2.454c-.784.57-1.838-.196-1.54-1.118l1.287-3.966a1 1 0 00-.364-1.118L2.049 9.394c-.783-.57-.38-1.81.588-1.81h4.175a1 1 0 00.95-.69l1.286-3.967z" />
+                  </svg>
+                </div>
+                <div className="flex flex-col ml-3">
+                  <button
+                    aria-label="Review scroll button"
+                    type="button"
+                    className="flex justify-center font-semibold border border-transparent px-0 py-0 items-end min-h-9"
+                  >
+                    <span
+                      className="text-blue-700 hover:underline cursor-pointer text-sm leading-5"
+                      data-testid="trade-review-count"
+                    >
+                      44 reviews
+                    </span>
+                  </button>
+                  <span className="text-neutral-500 text-xs">
+                    Customer reviews
+                  </span>
+                </div>
+              </div>
+
+              {/* Location and Member Info */}
+              <div className="flex flex-col gap-2 md:gap-3 pt-5">
+                <div className="flex flex-row justify-start items-center gap-2">
+                  <span className="inline-flex items-center justify-center rounded-full bg-blue-100 p-1">
+                    <MapPinIcon className="h-5 w-5 text-blue-700" />
+                  </span>
+                  <h2 className="font-semibold tracking-normal flex text-neutral-800 gap-1 text-base sm:text-lg">
+                    Cardiff
+                  </h2>
+                </div>
+                <div className="flex flex-row justify-start items-center gap-2">
+                  <span className="inline-flex items-center justify-center rounded-full bg-blue-100 p-1">
+                    <svg
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 18 18"
+                      width="20"
+                      height="20"
+                      className="text-blue-700"
+                    >
+                      <path
+                        fill="#0058A2"
+                        id="path1"
+                        d="M18 .763a7.436 7.436 0 0 0-1.662.083 2.87 2.87 0 0 0-1.107.443 13.292 13.292 0 0 0-1.593 1.481c-.443.485-.775.831-1.661 1.967l-2.27 2.977C8.791 8.96 8.293 9.54 8.168 9.54c-.235 0-.374-.318-.498-.927l-.139-.651c-.18-.97-.734-.748-1.204-.554-.623.25-1.011.886-.928 1.55 0 .18 0 .098.083.804 0 .055.18 1.246.25 1.592.055.277.138.554.276.817a1.385 1.385 0 0 0 .443.54c.208.138.443.208.693.235.733.083 1.246-.193 2.021-1.107z"
+                      ></path>
+                      <path
+                        fill="#EB1F40"
+                        id="path2"
+                        d="M6.37 17.254c-2.078 0-3.67-.61-4.75-1.814C.554 14.207 0 12.463 0 10.206 0 7.88.568 6.107 1.69 4.86c1.135-1.246 2.768-1.869 4.9-1.869 1.44 0 2.742.277 3.905.817L9.028 5.872a6.23 6.23 0 0 0-2.451-.443c-2.382 0-3.572 1.592-3.572 4.75 0 1.536.29 2.7.886 3.46.595.79 1.454 1.178 2.603 1.178a7.43 7.43 0 0 0 3.683-.97v2.548a5.965 5.965 0 0 1-1.662.665c-.72.138-1.44.194-2.16.194z"
+                      ></path>
+                    </svg>
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold text-xs sm:text-sm">
+                    Checkatrade member since{" "}
+                    <span className="ml-1 font-bold text-blue-900">2023</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Sidebar */}
+            <div className="bg-[#F4F3F0] flex flex-col w-full gap-1 relative rounded md:w-[350px] md:mt-0 mt-6 px-4 pt-6 pb-4 justify-center items-center h-fit">
+              <div className="w-full flex flex-col flex-1 flex-grow gap-2 items-center">
+                {/* Request Quote Button - Updated Colors */}
+                <a
+                  aria-label="Request a quote button"
+                  href="#"
+                  className="flex justify-center items-center rounded font-semibold border border-transparent focus:outline-none focus-visible:ring-4 focus-visible:ring-tabbed-500 transition disabled:cursor-not-allowed bg-[#EB1F40] text-neutral-0 fill-neutral-0 text-white hover:bg-[#d31c3a] active:bg-[#b81931] py-1 px-4 min-h-10 disabled:bg-neutral-400 w-full gap-1"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="25"
+                    height="20"
+                    viewBox="0 0 20 16"
+                    fill="currentColor"
+                  >
+                    <path d="M3 13.19c0 .25.26.43.49.33l13.4-5.36c.15-.06.15-.27 0-.33L3.49 2.48c-.23-.1-.49.07-.49.33V6.1c0 .36.27.67.63.71L13.22 8 3.63 9.19c-.36.05-.63.35-.63.71v3.29z"></path>
+                  </svg>
+                  Request a quote
+                </a>
+                {/* Show Phone Button - Updated */}
+                <button
+                  aria-label="Call trader"
+                  type="button"
+                  className="flex justify-center items-center rounded font-semibold border focus:outline-none focus-visible:ring-4 focus-visible:ring-tabbed-500 transition disabled:cursor-not-allowed text-[#0058A2] bg-neutral-0 border-[#0058A2] fill-[#0058A2] hover:bg-[#0058A2] hover:text-white hover:fill-white active:bg-[#004a87] active:border-[#004a87] active:text-neutral-0 active:fill-neutral-0 py-1 px-4 min-h-10 disabled:bg-neutral-400 w-full gap-1 group"
+                  onClick={() => setShowPhone((prev) => !prev)}
+                >
+                  <PhoneIcon className="h-5 w-5 text-inherit group-hover:text-white group-hover:fill-white" />
+                  <span className="group-hover:text-white">
+                    {showPhone ? "07458 177554" : "Show phone number"}
+                  </span>
+                </button>
+                {/* Enhanced Share Button */}
+                <button
+                  aria-label="Share"
+                  type="button"
+                  className="flex justify-center items-center rounded font-semibold border focus:outline-none focus-visible:ring-4 focus-visible:ring-tabbed-500 transition disabled:cursor-not-allowed text-[#2E7D32] bg-neutral-0 border-[#2E7D32] fill-[#2E7D32] hover:bg-[#2E7D32] hover:text-white hover:fill-white active:bg-[#1B5E20] active:border-[#1B5E20] active:text-neutral-0 active:fill-neutral-0 py-1 px-4 min-h-10 w-full gap-1 group"
+                >
+                  <ShareIcon className="h-5 w-5 text-inherit group-hover:text-white group-hover:fill-white" />
+                  <span className="group-hover:text-white">Share profile</span>
+                </button>
+              </div>
+            
+            </div>
+          </div>
+
+          {/* Insurance Info Banner */}
+          <div className="flex items-center gap-3 bg-amber-50 border-amber-200 border rounded-lg p-3 mt-4 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <div className="flex-shrink-0">
+              <InformationCircleIcon className="h-6 w-6 text-amber-600" />
+            </div>
+            <div className="flex-grow">
+              <p className="font-medium text-amber-800 leading-tight">
+                Public liability insurance is unverified
+              </p>
+              <p className="text-amber-700 text-sm mt-0.5">
+                Insurance verification helps protect you when hiring tradespeople
+              </p>
+            </div>
+            <button className="flex-shrink-0 text-sm text-blue-700 font-medium hover:text-blue-800 hover:underline transition-colors duration-200">
+              Learn more
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Navigation Tabs - Updated with HeadlessUI */}
+      {/* Navigation Tabs - Enhanced for all screens */}
+      <div
+        ref={headerRef}
+        className="flex w-full sticky top-[-1px] z-40 justify-center"
+      >
+        <div className="w-full !bg-white max-w-screen-lg mx-auto">
+          <Tab.Group selectedIndex={activeTabIndex} onChange={handleTabChange}>
+            <Tab.List
+              ref={tabListRef}
+              className="flex overflow-x-auto scrollbar-none bg-neutral-0 border-y border-neutral-200 md:rounded-bl-lg md:rounded-br-lg md:border-x scroll-smooth shadow-md"
+              style={{
+                WebkitOverflowScrolling: "touch",
+                msOverflowStyle: "none",
+                scrollbarWidth: "none",
+              }}
+            >
+              {tabs.map((tab) => (
+                <Tab
+                  key={tab.id}
+                  className={({ selected }) => `
+                    flex items-center gap-2 px-4 py-4 text-sm font-medium transition-colors relative flex-shrink-0 outline-none whitespace-nowrap hover:underline
+                    ${
+                      selected
+                        ? "text-blue-700 font-bold border-b-4 border-blue-700 bg-blue-50 md:rounded-b-sm"
+                        : "text-neutral-800 hover:text-blue-700 hover:bg-blue-50 border-b-4 border-transparent"
+                    }
+                  `}
+                >
+                  <tab.icon
+                    className="h-5 w-5"
+                    aria-hidden="true"
+                    style={{
+                      color: ({ selected }) =>
+                        selected ? "#1D4ED8" : "#9CA3AF",
+                    }}
+                  />
+                  {tab.name}
+                </Tab>
+              ))}
+            </Tab.List>
+          </Tab.Group>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="max-w-screen-lg mx-auto">
+        {/* Services Tab */}
+        <section
+          id="services"
+          ref={sectionRefs.current["services"]}
+          className="flex flex-col bg-white max-w-screen-lg bg-neutral-0 py-6 rounded w-full mt-3 md:mt-6 md:px-6 md:rounded-lg md:border md:border-neutral-200 px-4 scroll-mt-20"
+        >
+          <div className="flex flex-row justify-between items-center mb-4">
+            <h2 className="text-text-neutral-primary font-semibold text-lg leading-6 tracking-normal md:text-2xl">
+              Services
+            </h2>
+          </div>
+          <div className="flex flex-col rounded-lg overflow-hidden">
+            <div className="mb-2">
+              <div className="rounded-lg border border-neutral-200 shadow-sm transition-colors duration-300 ease-in-out hover:border-neutral-300 bg-white">
+                <button
+                  aria-expanded={isServiceExpanded}
+                  onClick={() => setIsServiceExpanded(!isServiceExpanded)}
+                  className="flex w-full text-left flex-col relative p-4 hover:bg-neutral-50 rounded-t-lg"
+                >
+                  <div className="pr-8">
+                    <div className="flex items-baseline w-full justify-between md:justify-start pr-8">
+                      <h3 className="text-neutral-800 font-semibold text-lg leading-6 tracking-normal">
+                        Central Heating
+                      </h3>
+                      <p className="font-normal text-neutral-600 text-sm md:ml-2 absolute md:static right-12 top-5 md:right-auto">
+                        (14)
+                      </p>
+                    </div>
+                  </div>
+                  {isServiceExpanded ? (
+                    <ChevronUpIcon className="h-6 w-6 transition-transform duration-300 ease-in-out absolute right-4 top-1/2 -translate-y-1/2 text-blue-700" />
+                  ) : (
+                    <ChevronDownIcon className="h-6 w-6 transition-transform duration-300 ease-in-out absolute right-4 top-1/2 -translate-y-1/2 text-blue-700" />
+                  )}
+                </button>
+
+                {isServiceExpanded && (
+                  <div
+                    className="transition-all duration-500 ease-in-out overflow-hidden"
+                    style={{ maxHeight: isServiceExpanded ? "1000px" : "0px" }}
+                  >
+                    <div className="p-4 border-t border-neutral-200 bg-neutral-50 rounded-b-lg">
+                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 px-2">
+                        {[
+                          "Air Source Heat Pump Installation - ASHP",
+                          "Air Source Heat Pump Servicing / Repair - ASHP",
+                          "Emergency Central Heating Repair",
+                          "Gas Boiler Installation",
+                          "Gas Boiler Servicing / Repair",
+                          "Gas Central Heating Servicing / Repair",
+                          "Gas Cooker Installation",
+                          "Gas Safety Checks - CP12",
+                          "Ground Source Heat Pump Installation - GSHP",
+                          "Ground Source Heat Pump Servicing / Repair - GSHP",
+                          "LPG Boiler Installation",
+                          "LPG Central Heating Installation",
+                          "LPG Central Heating Servicing / Repair",
+                          "Smart Thermostats",
+                        ].map((service, index) => (
+                          <li
+                            key={index}
+                            className="flex items-center gap-2.5 align-middle"
+                          >
+                            <span className="flex-shrink-0 size-4 text-blue-700">
+                              <CheckIcon className="h-4 w-4" />
+                            </span>
+                            <div
+                              id="service-selected-container"
+                              className="flex items-center gap-x-2"
+                            >
+                              <span className="text-neutral-700 text-sm leading-5 font-normal">
+                                {service}
+                              </span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Reviews Tab */}
+        <section
+          id="reviews"
+          ref={sectionRefs.current["reviews"]}
+          className="max-w-screen-lg bg-white bg-neutral-0 py-6 rounded w-full mt-3 md:mt-6 md:rounded-lg md:border md:border-neutral-200 flex flex-col gap-4 px-0 md:p-6 scroll-mt-20"
+        >
+          <div className="flex flex-row justify-between items-center px-4 md:px-0 mb-4">
+            <h2 className="text-text-neutral-primary font-semibold text-lg leading-6 tracking-normal md:text-2xl">
+              Customer Reviews
+            </h2>
+            <a
+              href="#"
+              className="flex justify-center items-center rounded font-semibold border focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500 transition duration-150 ease-in-out text-blue-700 bg-white border-blue-700 fill-blue-700 hover:text-white hover:bg-blue-700 hover:border-blue-700 hover:fill-white active:bg-blue-800 active:border-blue-800 active:text-white active:fill-white py-1 px-4 min-h-10 disabled:bg-neutral-400 disabled:text-neutral-600 disabled:border-neutral-400"
+            >
+              Write a review
+            </a>
+          </div>
+
+          <div className="px-4 md:px-0">
+            <div className="w-full bg-gradient-to-br from-blue-50 to-white border border-blue-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 p-6 md:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-8 items-center">
+                {/* Rating Overview - Left Side */}
+                <div className="flex flex-col items-center md:items-start bg-white p-6 rounded-xl border border-blue-100 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-5xl font-bold text-blue-700">8</span>
+                    <div className="flex flex-col items-start">
+                      <span className="text-neutral-500 text-sm font-medium">/10</span>
+                      <div className="flex mt-1">
+                        {[...Array(5)].map((_, i) => (
+                          <StarIcon 
+                            key={i} 
+                            className={`h-5 w-5 ${i < 4 ? "text-yellow-400 fill-yellow-400" : "text-gray-300 fill-gray-300"}`} 
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-neutral-600 text-sm mt-4 flex items-center">
+                    Based on <span className="font-semibold text-blue-800 mx-1">44</span> reviews
+                    <button
+                      aria-label="Learn more about the overall rating"
+                      type="button"
+                      className="ml-1 text-blue-500 hover:text-blue-700"
+                    >
+                      <InformationCircleIcon className="h-4 w-4" />
+                    </button>
+                  </p>
+                </div>
+                
+                {/* Rating Details - Right Side */}
+                <div className="flex flex-col gap-5 relative pl-0 md:pl-8 md:before:content-[''] md:before:absolute md:before:left-0 md:before:top-0 md:before:h-full md:before:w-[1px] md:before:bg-gradient-to-b md:before:from-blue-200 md:before:via-blue-300 md:before:to-blue-100">
+                  <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-blue-100 hover:border-blue-300 transition-colors">
+                    <div className="p-2 bg-blue-50 rounded-full">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 20 16"
+                        className="fill-blue-700 h-6 w-6"
+                      >
+                        <path d="m8.22 8.79.68-2.18-1.78-1.34H9.3l.7-2.23.68 2.23h2.19L11.1 6.61l.66 2.18L10 7.44 8.22 8.79zM5.64 16v-5.9c-.55-.56-.96-1.19-1.23-1.9S4 6.76 4 6c0-1.68.58-3.11 1.74-4.26C6.89.58 8.32 0 10 0s3.11.58 4.26 1.74C15.42 2.89 16 4.32 16 6c0 .76-.14 1.49-.41 2.2-.27.71-.68 1.34-1.23 1.9V16L10 14.61 5.64 16zM10 10.99c1.39 0 2.57-.48 3.54-1.45.97-.97 1.45-2.15 1.45-3.54s-.48-2.57-1.45-3.54c-.97-.97-2.15-1.45-3.54-1.45s-2.57.48-3.54 1.45C5.49 3.43 5.01 4.61 5.01 6s.48 2.57 1.45 3.54c.97.97 2.15 1.45 3.54 1.45zm-3.36 3.59 3.36-.99 3.36.99v-3.65c-.49.36-1.02.62-1.6.8a5.923 5.923 0 0 1-3.51.01c-.58-.18-1.11-.44-1.6-.8l-.01 3.64z"></path>
+                      </svg>
+                    </div>
+                    <div className="flex-grow">
+                      <p className="font-medium text-neutral-800 text-base">Quality of work</p>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+                      </div>
+                    </div>
+                    <div className="bg-green-100 text-green-800 font-bold text-xl p-2 rounded">10</div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-blue-100 hover:border-blue-300 transition-colors">
+                    <div className="p-2 bg-blue-50 rounded-full">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 20 16"
+                        className="fill-blue-700 h-6 w-6"
+                      >
+                        <path d="M15.24 9.82V4.67l-3.69-2.58-3.68 2.58v2.02h-.86V4.25L11.56 1l4.55 3.25v5.57h-.87zm-3.31-4.44h.62v-.62h-.62v.62zm-1.37 0h.62v-.62h-.62v.62zm1.37 1.37h.62v-.62h-.62v.62zm-1.37 0h.62v-.62h-.62v.62zm-4.13 5.82 5.22 1.53 4.18-1.3c-.01-.22-.08-.39-.22-.51a.75.75 0 0 0-.5-.18h-3.42a4.5 4.5 0 0 1-.66-.04 2.8 2.8 0 0 1-.62-.15l-1.57-.49.28-.87 1.5.53c.17.06.36.1.57.13.21.02.47.03.78.03h.47c0-.23-.06-.41-.18-.57-.12-.15-.27-.26-.45-.33L7.94 8.9c-.02 0-.03-.01-.04-.01H6.43v3.68zm-3.22 1.84V8.02h4.64c.07 0 .13.01.19.02.06.02.12.03.18.05l3.86 1.43c.34.12.63.34.87.63.24.3.36.66.36 1.08h1.8c.5 0 .9.17 1.22.51.31.34.47.76.47 1.25v.44L11.71 15l-5.28-1.53v.93H3.21zm.86-.86h1.49V8.89H4.07v4.66z"></path>
+                      </svg>
+                    </div>
+                    <div className="flex-grow">
+                      <p className="font-medium text-neutral-800 text-base">Reliability</p>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+                      </div>
+                    </div>
+                    <div className="bg-green-100 text-green-800 font-bold text-xl p-2 rounded">10</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-1 flex-col items-center px-4 md:px-0 pt-6 gap-6">
+            <h3 className="text-neutral-800 font-semibold text-base leading-6 tracking-normal self-start md:text-lg">
+              Reviews ({allReviewsData.length})
+            </h3>
+            <ul className="grid w-full grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              {allReviewsData.slice(0, 3).map((review, index) => (
+                <li
+                  key={index}
+                  className="bg-white rounded-lg flex flex-col p-4 gap-3 border border-neutral-200 shadow-sm hover:shadow-md transition-shadow duration-200"
+                >
+                  <section className="grid gap-x-2 items-center grid-cols-[auto_1fr] grid-rows-[auto_auto] gap-y-1">
+                    <span
+                      className={`font-semibold flex items-center justify-center rounded-lg min-w-[40px] px-2 py-1 shrink text-base row-start-1 ${
+                        review.rating >= 7
+                          ? "bg-green-100 text-green-800"
+                          : review.rating >= 4
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {review.rating}/10
+                    </span>
+                    <h3 className="text-neutral-800 text-base font-semibold row-start-2 col-span-2 line-clamp-2">
+                      {review.title}
+                    </h3>
+                    <p className="text-neutral-500 text-xs ml-auto shrink-0 row-start-1 col-start-2">
+                      {review.date}
+                    </p>
+                  </section>
+
+                  <div className="flex flex-col gap-1.5 items-start">
+                    <div className="line-clamp-4 sm:line-clamp-5 text-sm text-neutral-700 break-words">
+                      {review.content}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 mt-auto pt-2 border-t border-neutral-100">
+                    {review.verified && (
+                      <span className="font-normal flex items-center gap-1.5 text-green-700 text-xs">
+                        <CheckBadgeIcon className="h-4 w-4" />
+                        Verified review
+                      </span>
+                    )}
+                    <span className="font-normal text-neutral-500 text-xs">
+                      Location: {review.location}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={openReviewsPopup}
+              className="flex justify-center items-center rounded font-semibold border focus:outline-none focus-visible:ring-4 focus-visible:ring-blue-500 transition duration-150 ease-in-out text-blue-700 bg-white border-blue-700 fill-blue-700 hover:text-white hover:bg-blue-700 hover:border-blue-700 hover:fill-white active:bg-blue-800 active:border-blue-800 active:text-white active:fill-white py-1.5 px-5 min-h-10 disabled:bg-neutral-400 disabled:text-neutral-600 disabled:border-neutral-400 mt-4"
+            >
+              See all {allReviewsData.length} reviews
+            </button>
+          </div>
+        </section>
+
+        {/* Photos Tab */}
+        <section
+          id="photos"
+          ref={sectionRefs.current["photos"]}
+          className="flex flex-col max-w-screen-lg bg-white bg-neutral-0 px-4 py-6 rounded w-full mt-3 md:mt-6 md:px-6 md:rounded-lg md:border md:border-neutral-200 scroll-mt-20"
+        >
+          <div className="flex flex-row justify-between items-center">
+            <h2 className="text-text-neutral-primary font-semibold text-lg leading-6 tracking-normal md:text-2xl">
+              Photos
+            </h2>
+          </div>
+
+          <div className="grid gap-1 md:gap-2 pt-6">
+            <div className="grid gap-1 md:gap-2 grid-cols-2">
+              <a
+                className="group focus-visible:outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary"
+                aria-label="View photo gallery"
+                onClick={() => openLightbox(0)}
+              >
+                <div className="relative overflow-hidden rounded block aspect-[4/3]">
+                  <img
+                    alt=""
+                    loading="lazy"
+                    className="object-cover transition-all duration-300 ease-in-out group-hover:transform group-hover:scale-105 absolute h-full w-full"
+                    src={images[0]}
+                  />
+                </div>
+              </a>
+              <a
+                className="group focus-visible:outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary"
+                aria-label="View photo gallery"
+                onClick={() => openLightbox(1)}
+              >
+                <div className="relative overflow-hidden rounded block aspect-[4/3]">
+                  <img
+                    alt=""
+                    loading="lazy"
+                    className="object-cover transition-all duration-300 ease-in-out group-hover:transform group-hover:scale-105 absolute h-full w-full"
+                    src={images[1]}
+                  />
+                </div>
+              </a>
+            </div>
+
+            <div className="grid gap-1 md:gap-2 grid-cols-3">
+              <a
+                className="group focus-visible:outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary"
+                aria-label="View photo gallery"
+                onClick={() => openLightbox(2)}
+              >
+                <div className="relative overflow-hidden rounded block aspect-square">
+                  <img
+                    alt=""
+                    loading="lazy"
+                    className="object-cover transition-all duration-300 ease-in-out group-hover:transform group-hover:scale-105 absolute h-full w-full"
+                    src={images[2]}
+                  />
+                </div>
+              </a>
+              <a
+                className="group focus-visible:outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary"
+                aria-label="View photo gallery"
+                onClick={() => openLightbox(3)}
+              >
+                <div className="relative overflow-hidden rounded block aspect-square">
+                  <img
+                    alt=""
+                    loading="lazy"
+                    className="object-cover transition-all duration-300 ease-in-out group-hover:transform group-hover:scale-105 absolute h-full w-full"
+                    src={images[3]}
+                  />
+                </div>
+              </a>
+              <a
+                className="group focus-visible:outline-offset-2 focus-visible:outline-2 focus-visible:outline-primary"
+                aria-label="View photo gallery"
+                onClick={() => openLightbox(4)}
+              >
+                <div className="relative overflow-hidden rounded block aspect-square">
+                  <img
+                    alt=""
+                    loading="lazy"
+                    className="object-cover transition-all duration-300 ease-in-out group-hover:transform group-hover:scale-105 absolute h-full w-full"
+                    src={images[4]}
+                  />
+                  <span className="[&>a]:font-semibold absolute inset-0 bg-neutral-600/75 flex items-center justify-center text-white text-lg font-bold">
+                    +128
+                  </span>
+                </div>
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* Company Info Tab - Now Combined */}
+        <section
+          id="company-info"
+          ref={sectionRefs.current["company-info"]}
+          className="flex flex-col bg-white max-w-screen-lg bg-neutral-0 px-4 py-6 rounded w-full mt-3 md:mt-6 md:px-6 md:rounded-lg md:border md:border-neutral-200 scroll-mt-20 mb-10"
+        >
+          {/* Grid container for Company Info and Accreditations */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+
+            {/* Column 1: Company Information */}
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-row justify-between items-center mb-0"> {/* Adjusted margin */}
+                <h2 className="text-neutral-800 font-semibold text-lg leading-6 tracking-normal md:text-2xl">
+                  Company Information
+                </h2>
+              </div>
+              <div
+                className="flex flex-col gap-6" // Removed grid styles from here
+                style={{ overflowWrap: "anywhere" }}
+              >
+                  {/* Original Company Info content starts here */}
+                  <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-4 items-center border border-neutral-200 rounded-lg p-4 bg-neutral-50">
+                    <div className="flex items-center gap-2 text-neutral-600">
+                      <UserIcon className="h-5 w-5 text-neutral-500" />
+                      <p className="font-medium text-neutral-700 text-sm">Owner</p>
+                    </div>
+                    <p className="font-semibold text-neutral-900 text-sm">
+                      Customer Services
+                    </p>
+
+                    <div className="flex items-center gap-2 text-neutral-600">
+                      <BuildingOfficeIcon className="h-5 w-5 text-neutral-500" />
+                      <p className="font-medium text-neutral-700 text-sm">
+                        Company Type
+                      </p>
+                    </div>
+                    <p className="font-semibold text-neutral-900 text-sm">
+                      Ltd Company{" "}
+                      <span className="text-neutral-600 font-normal">
+                        (2 years on Checkatrade)
+                      </span>
+                    </p>
+
+                    <div className="flex items-center gap-2 text-neutral-600">
+                      <DocumentTextIcon className="h-5 w-5 text-neutral-500" />
+                      <p className="font-medium text-neutral-700 text-sm">
+                        VAT Registered
+                      </p>
+                    </div>
+                    <p className="font-semibold text-neutral-900 text-sm">
+                      Yes:{" "}
+                      <span className="font-mono text-neutral-700">366940857</span>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap flex-row items-center gap-2">
+                    <span className="flex items-center h-fit bg-blue-50 text-blue-800 text-xs font-medium w-fit rounded-full border border-blue-200 py-1 px-3">
+                      Domestic Work
+                    </span>
+                    <span className="flex items-center h-fit bg-blue-50 text-blue-800 text-xs font-medium w-fit rounded-full border border-blue-200 py-1 px-3">
+                      Commercial Work
+                    </span>
+                    <span className="flex items-center h-fit bg-blue-50 text-blue-800 text-xs font-medium w-fit rounded-full border border-blue-200 py-1 px-3">
+                      Free Estimates
+                    </span>
+                    <span className="flex items-center h-fit bg-blue-50 text-blue-800 text-xs font-medium w-fit rounded-full border border-blue-200 py-1 px-3">
+                      Cards Accepted
+                    </span>
+                    <span className="flex items-center h-fit bg-blue-50 text-blue-800 text-xs font-medium w-fit rounded-full border border-blue-200 py-1 px-3">
+                      Insurance Work
+                    </span>
+                    <span className="flex items-center h-fit bg-blue-50 text-blue-800 text-xs font-medium w-fit rounded-full border border-blue-200 py-1 px-3">
+                      24 Hour Call-out
+                    </span>
+                  </div>
+
+                  {/* About Section */}
+                   <div className="flex flex-col gap-2 mt-4"> {/* Added margin top */}
+                      <h3 className="text-neutral-700 font-semibold text-base mb-2">
+                        About Lets Heat
+                      </h3>
+                      <div className="prose prose-sm text-neutral-700 max-w-none line-clamp-none">
+                        <p>
+                          Let's Heat are an established family run business covering
+                          Cardiff, Bristol & the surrounding areas.
+                        </p>
+                        <p>
+                          We directly employ our own specialist tradesmen, to ensure the
+                          high standards we set are matched on every installation.
+                        </p>
+
+                        <p>
+                          We offer Air Conditioning, Boilers, Heat Pump, Central Heating
+                          and complete bathroom and wetroom renovation service, taking
+                          care of everything from start to finish.
+                        </p>
+
+                        <p>
+                          We are Worcester accredited installers and in so can offer a
+                          massive boiler warranty of up to 12 years.
+                        </p>
+
+                        <p>
+                          <strong>Our Services Include:</strong>
+                        </p>
+                        <ul>
+                          <li>
+                            Full bathroom and kitchen installations (Bathrooms,
+                            Wetrooms, Kitchens)
+                          </li>
+                          <li>
+                            Full Central Heating Installations (Boiler Replacements,
+                            Central heating installations, Power Flushing, Under floor
+                            Heating)
+                          </li>
+                          <li>
+                            Certificates & Servicing (Homeowner/Landlord Gas Safety
+                            Certificates, Boiler Servicing, Boiler Repair)
+                          </li>
+                          <li>
+                            Plumbing Repairs (toilet repairs, tap replacements, shower
+                            replacements, leaking pipework etc.)
+                          </li>
+                          <li>Unvented Cylinder Replacements</li>
+                          <li>
+                            Air conditioning installation and maintenance (Daikin,
+                            Mitsubishi, Toshiba, Fujitsu)
+                          </li>
+                        </ul>
+
+                        <p>
+                          We offer a professional and cost effective service for
+                          commercial and residential customers, taking pride in our
+                          repairs and installations, delivering a very high standard of
+                          workmanship and customer satisfaction.
+                        </p>
+
+                        <p>
+                          <strong>Why Choose Us?</strong>
+                        </p>
+                        <ul>
+                          <li>
+                            Price match guarantee – find a cheaper like-for-like quote
+                            from an accredited installer and we'll match it.
+                          </li>
+                          <li>
+                            Flexible payment options - including Buy Now Pay Later, 0%
+                            finance and £0 deposit.
+                          </li>
+                          <li>
+                            Award winning customer service - trained to listen, not to
+                            sell.
+                          </li>
+                          <li>
+                            5-star customer satisfaction - Check our Trust Pilot
+                            ratings.
+                          </li>
+                          <li>Instant online quote - or call our friendly team.</li>
+                          <li>
+                            24/7 Emergency boiler breakdown cover – 1-year workmanship
+                            on new boiler installations.
+                          </li>
+                          <li>
+                            Peace of mind – up to 12 years warranty on new boilers.
+                          </li>
+                          <li>
+                            Boiler maintenance - Landlord Gas Safety Certificates and
+                            boiler servicing.
+                          </li>
+                        </ul>
+                        <p>
+                          Get a fixed price quote now:{" "}
+                          <a
+                            href="http://www.letsheat.co.uk"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-700 hover:underline"
+                          >
+                            www.letsheat.co.uk
+                          </a>
+                        </p>
+                      </div>
+                  </div>
+              </div>
+            </div>
+
+            {/* Column 2: Accreditations & Awards */}
+            <div className="flex flex-col">
+               <div className="flex flex-row justify-between items-center mb-6">
+                <h2 className="text-neutral-800 font-semibold text-lg leading-6 tracking-normal md:text-2xl">
+                  Accreditations & Awards
+                </h2>
+              </div>
+              {/* Moved Accreditations Content Here */}
+              <div className="grid grid-cols-1 sm:grid-cols-1 gap-6"> {/* Force single column within this grid cell */}
+                  <div className="flex flex-col p-6 border border-neutral-200 rounded-xl bg-neutral-50 gap-4 hover:shadow-md transition-shadow duration-300 ease-in-out">
+                    <div className="w-20 h-20 flex-shrink-0 flex items-center justify-center bg-white rounded-lg p-2 shadow-sm">
+                      <img
+                        alt="F Gas Register.com"
+                        loading="lazy"
+                        width="56"
+                        height="56"
+                        className="object-contain h-full w-full"
+                        src="https://storage.googleapis.com/frontend-prod-37565-accred-images/Accred160_F-GAS-NEW.gif"
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <a
+                        className="text-blue-700 hover:underline cursor-pointer font-medium text-base"
+                        target="_blank"
+                        rel="nofollow"
+                        href="https://fgasregister.com/"
+                      >
+                        F Gas Register.com
+                      </a>
+                      <p className="text-neutral-600 text-sm mt-1">
+                        Certified for handling F-Gas refrigerants.
+                      </p>
+                      <span className="font-normal flex items-center gap-1.5 text-green-700 text-xs mt-2">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 20 16"
+                          fill="currentColor"
+                          className="shrink-0"
+                        >
+                          <path d="M13.87 5.67c.29.3.28.78-.02 1.07l-4.43 4.23c-.29.28-.75.28-1.04 0L6.16 8.85a.758.758 0 0 1-.02-1.07c.28-.3.76-.31 1.06-.02l1.69 1.62 3.91-3.73c.3-.3.78-.28 1.07.02zM10 1.51C6.42 1.51 3.51 4.42 3.51 8s2.91 6.49 6.49 6.49 6.49-2.91 6.49-6.49S13.58 1.51 10 1.51zM2 8c0-4.42 3.58-8 8-8s8 3.58 8 8-3.58 8-8 8-8-3.58-8-8z"></path>
+                        </svg>
+                        Verified
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col p-6 border border-neutral-200 rounded-xl bg-neutral-50 gap-4 hover:shadow-md transition-shadow duration-300 ease-in-out">
+                    <div className="w-20 h-20 flex-shrink-0 flex items-center justify-center bg-white rounded-lg p-2 shadow-sm">
+                      <img
+                        alt="Gas Safe Register"
+                        loading="lazy"
+                        width="56"
+                        height="56"
+                        className="object-contain h-full w-full"
+                        src="https://storage.googleapis.com/frontend-prod-37565-accred-images/Accred11_Gas-Safe-Register.gif"
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <a
+                        className="text-blue-700 hover:underline cursor-pointer font-medium text-base"
+                        target="_blank"
+                        rel="nofollow"
+                        href="https://www.gassaferegister.co.uk/find-an-engineer/#checkabusiness"
+                      >
+                        Gas Safe Register
+                      </a>
+                      <p className="text-neutral-600 text-sm mt-1">
+                        Registered for safe gas installations and repairs.
+                      </p>
+                      <span className="font-normal flex items-center gap-1.5 text-green-700 text-xs mt-2">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 20 16"
+                          fill="currentColor"
+                          className="shrink-0"
+                        >
+                          <path d="M13.87 5.67c.29.3.28.78-.02 1.07l-4.43 4.23c-.29.28-.75.28-1.04 0L6.16 8.85a.758.758 0 0 1-.02-1.07c.28-.3.76-.31 1.06-.02l1.69 1.62 3.91-3.73c.3-.3.78-.28 1.07.02zM10 1.51C6.42 1.51 3.51 4.42 3.51 8s2.91 6.49 6.49 6.49 6.49-2.91 6.49-6.49S13.58 1.51 10 1.51zM2 8c0-4.42 3.58-8 8-8s8 3.58 8 8-3.58 8-8 8-8-3.58-8-8z"></path>
+                        </svg>
+                        Verified
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              {/* End of Moved Accreditations Content */}
+            </div>
+
+          </div> {/* End of grid container */}
+        </section>
+
+        {/* Accreditations Section - REMOVED */}
+        {/*
+        <section
+          id="accreditations"
+          ref={sectionRefs.current["accreditations"]} // Ref is no longer needed here
+          className="..." // Original classes removed
+        >
+          // ... content moved ...
+        </section>
+        */}
+      </div>
+
+      {/* Image Lightbox for Photo Gallery */}
+      {isLightboxOpen && (
+        <Lightbox
+          mainSrc={images[photoIndex]}
+          nextSrc={images[(photoIndex + 1) % images.length]}
+          prevSrc={images[(photoIndex + images.length - 1) % images.length]}
+          onCloseRequest={() => setIsLightboxOpen(false)}
+          onMovePrevRequest={() =>
+            setPhotoIndex((photoIndex + images.length - 1) % images.length)
+          }
+          onMoveNextRequest={() =>
+            setPhotoIndex((photoIndex + 1) % images.length)
+          }
+          toolbarButtons={[
+            <button
+              key="thumbnails"
+              type="button"
+              className="text-white text-xs md:text-sm hover:text-gray-300 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (thumbnailsRef.current) {
+                  thumbnailsRef.current.scrollIntoView({
+                    behavior: "smooth",
+                    block: "nearest",
+                  });
+                }
+              }}
+            >
+              {`${photoIndex + 1} / ${images.length}`}
+            </button>,
+          ]}
+          imageTitle={
+            <div className="flex flex-col items-start md:items-start gap-1">
+              <h1 className="font-bold text-xs leading-4-5 tracking-normal text-white md:text-neutral-900 text-center md:text-left md:text-xl md:leading-7">
+                Lets Heat
+              </h1>
+              <span className="font-normal text-xs leading-4 text-white/90 md:hidden">
+                Photo {photoIndex + 1} of {images.length}
+              </span>
+            </div>
+          }
+          reactModalStyle={{
+            overlay: {
+              zIndex: 1050,
+            },
+          }}
+        />
+      )}
+
+      {/* Reviews Popup Modal */}
+      <ReviewsPopup
+        isOpen={isReviewsPopupOpen}
+        onClose={closeReviewsPopup}
+        reviews={allReviewsData}
+      />
+
+      {/* Sticky Bottom Action Buttons for Both Mobile and Desktop */}
+      <div
+        className={`sticky bottom-0 border-t border-neutral-400 w-full bg-white z-20 flex justify-center md:px-0 transition-opacity duration-300 ${
+          showStickyButtons ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="flex flex-row justify-between self-center max-w-screen-lg w-full md:py-4">
+          <div className="flex-row gap-2 items-center hidden md:flex">
+            <img
+              alt="Trade profile image"
+              loading="lazy"
+              width="70"
+              height="70"
+              className="object-contain bg-neutral-0 font-medium rounded-lg border-2 border-neutral-200 flex justify-center items-center select-none min-w-[70px] min-h-[70px] w-[70px] h-[70px]"
+              src="https://lh3.googleusercontent.com/HDTECijs8t7hybZ6xmyZA2MWM7JQniH1vbdD83_vO8ydK83kaNrI7jkFby8T3BAMB-pkIq5QysWdEdlV8YebVygtkzVbneKRi9AkCjfcLn06hyhkk_8APd2v1oih=w1024-nu-rw-e365"
+            />
+            <h1 className="text-text-neutral-primary font-semibold text-lg leading-6 tracking-normal">
+              Lets Heat
+            </h1>
+          </div>
+          <div className="flex flex-row w-full md:w-fit p-4 gap-3 bg-[#F4F3F0] justify-center rounded items-center">
+            <button
+              id="sticky-reveal-phone-number-btn"
+              aria-label="Call trader"
+              type="button"
+              className="flex justify-center items-center rounded font-semibold border focus:outline-none focus-visible:ring-4 focus-visible:ring-tabbed-500 transition disabled:cursor-not-allowed text-[#0058A2] bg-neutral-0 border-[#0058A2] fill-[#0058A2] hover:bg-[#0058A2] hover:text-white hover:fill-white active:bg-[#004a87] active:border-[#004a87] active:text-neutral-0 active:fill-neutral-0 py-1 px-4 min-h-10 disabled:bg-neutral-400 h-10 w-full gap-1 group md:w-60 text-sm md:text-base"
+              onClick={() => setShowPhone((prev) => !prev)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="25"
+                height="20"
+                viewBox="0 0 20 16"
+                fill="currentColor"
+                className="group-hover:text-white group-hover:fill-white"
+              >
+                <path d="m15.63 10.63-1.98-.23c-.48-.05-.94.11-1.28.44l-1.43 1.43A11.592 11.592 0 0 1 5.8 7.14L7.24 5.7c.34-.34.5-.8.44-1.28l-.22-1.96c-.09-.79-.76-1.38-1.55-1.38H4.56c-.88 0-1.61.73-1.56 1.61.41 6.66 5.74 11.97 12.38 12.38.89.06 1.62-.67 1.62-1.55v-1.35c.01-.79-.58-1.45-1.37-1.54z"></path>
+              </svg>
+              <span className="group-hover:text-white block md:hidden">
+                Call
+              </span>
+              <span className="group-hover:text-white hidden md:inline">
+                {showPhone ? "07458 177554" : "Show phone number"}
+              </span>
+            </button>
+            <a
+              aria-label="Request a quote button"
+              href="#"
+              className="flex justify-center items-center rounded font-semibold border border-transparent focus:outline-none focus-visible:ring-4 focus-visible:ring-tabbed-500 transition disabled:cursor-not-allowed bg-[#EB1F40] text-neutral-0 fill-neutral-0 text-white hover:bg-[#d31c3a] active:bg-[#b81931] py-1 min-h-10 disabled:bg-neutral-400 w-full text-sm md:text-base px-0 md:px-4 md:w-52 h-10 gap-1 md:gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="25"
+                height="20"
+                viewBox="0 0 20 16"
+                fill="currentColor"
+              >
+                <path d="M3 13.19c0 .25.26.43.49.33l13.4-5.36c.15-.06.15-.27 0-.33L3.49 2.48c-.23-.1-.49.07-.49.33V6.1c0 .36.27.67.63.71L13.22 8 3.63 9.19c-.36.05-.63.35-.63.71v3.29z"></path>
+              </svg>
+              Request a quote
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+
