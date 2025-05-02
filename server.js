@@ -19,6 +19,7 @@ const { fileRouter } = require("./routes/upload");
 const blogRouter = require("./routes/blog");
 const faqRouter = require("./routes/faq");
 const pageRouter = require("./routes/page");
+const sitemapRouter = require('./routes/sitemap');
 
 // Import Controllers
 const authController = require("./controllers/Main/AuthController");
@@ -42,6 +43,7 @@ app.use("/api", fileRouter);
 app.use("/api", blogRouter);
 app.use("/api", faqRouter);
 app.use("/api", pageRouter);
+app.use('/api', sitemapRouter);
 
 //add main ednpiutn get hello world
 app.get("/", (req, res) => {

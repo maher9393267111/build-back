@@ -4,9 +4,11 @@ const pageController = require('../controllers/Main/PageController');
 const blockController = require('../controllers/Main/BlockController');
 const { auth, restrictTo } = require('../utils/AuthMiddleware');
 
+
 // Page routes
 router.get('/pages', pageController.getAllPages);
 router.get('/pages/published-navigation', pageController.getPublishedPages);
+router.get('/pages/main', pageController.getMainPage);
 router.get('/pages/:id', pageController.getPage);
 router.get('/pages/by-slug/:slug', pageController.getPage);
 router.post('/pages', auth, restrictTo('ADMIN'), pageController.createPage);

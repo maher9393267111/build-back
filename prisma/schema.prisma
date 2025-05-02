@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,6 +5,143 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int              @id @default(autoincrement())
+  email              String           @unique
+  password           String
+  name               String
+  phone              String?
+  role               UserRole         @default(CUSTOMER)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  status             String           @default("active")
+  profileImage       Json?
+  verified           Boolean          @default(false)
+  verificationCode   String?
+  verificationExpiry DateTime?
+        
+  pages              Page[]
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+model BlogCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  blogs       Blog[]
+}
+
+model Blog {
+  id            Int          @id @default(autoincrement())
+  title         String
+  slug          String       @unique
+  content       String
+  excerpt       String?
+  featuredImage Json?
+  publishedAt   DateTime?
+  categoryId    Int
+  viewCount     Int          @default(0)
+  status        String       @default("draft")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  category      BlogCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([status])
+}
+
+model Faq {
+  id        Int      @id @default(autoincrement())
+  question  String
+  answer    String
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+
+
+
+
+
+
+
+
+
+model Page {
+  id            Int      @id @default(autoincrement())
+  title         String
+  slug          String   @unique
+  description   String?  // Meta description for SEO
+  status        String   @default("draft") // draft, published
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  authorId      Int
+  author        User     @relation(fields: [authorId], references: [id])
+  blocks        Block[]  // Relation to blocks
+  metaTitle     String?  // For SEO
+  metaKeywords  String?  // For SEO
+  ogImage       Json?    // Open Graph image for social media sharing
+  featuredImage Json?    // Featured image for the page
+  isMainPage    Boolean  @default(false) // Flag to indicate if this is the main page
+  canonicalUrl  String?  // Canonical URL for SEO
+  structuredData Json?   // Structured data for SEO (JSON-LD)
+  robots        String?  // Robots meta tag content (e.g., "index, follow", "noindex")
+
+  @@index([slug])
+  @@index([status])
+  @@index([isMainPage]) // Index for faster main page lookups
+}
+
+model Block {
+  id         Int      @id @default(autoincrement())
+  type       String
+  title      String?
+  content    Json
+  orderIndex Int
+  status     String   @default("active")
+  pageId     Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  page       Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+}
+
+model BlockTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  type      String
+  content   Json
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum UserRole {
@@ -26,391 +157,3 @@ enum JobStatus {
   CANCELLED
   INACTIVE
 }
-
-model User {
-  id             Int             @id @default(autoincrement())
-  email          String          @unique
-  password       String
-  name           String
-  phone          String?
-  role           UserRole        @default(CUSTOMER)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  status         String          @default("active") // active, inactive
-  profileImage   Json?           // Changed from String? to Json?
-  verified       Boolean         @default(false)    // For email/phone verification
-  verificationCode String?       // Store verification code
-  verificationExpiry DateTime?   // When the code expires
-  
-  // Relations
-  serviceProvider ServiceProvider?
-  jobsPosted     Job[]           @relation("CustomerJobs")
-  reviews        Review[]        @relation("CustomerReviews")
-  pages          Page[]          // Relation to created pages
-}
-
-model ServiceProvider {
-  id                 Int      @id @default(autoincrement())
-  userId             Int      @unique
-  businessName       String
-  description        String?
-  businessType       String?  // "Self Employed", "Limited company", "Looking to start a business"
-  businessPhone      String?  // Added business phone
-  
-  // Replace simple address with detailed structure
-  address            String?  // Main address line
-  address2           String?  // Additional address line
-  address3           String?  // Additional address line
-  city               String?  // City
-  state              String?  // State/County
-  postcode           String
-  country            String?  @default("UK") // Country with UK default
-  
-  latitude           Float?
-  longitude          Float?
-  website            String?
-  foundedYear        Int?
-  employeeCount      Int?     @default(1)
-  verificationStatus String   @default("pending") // pending, verified, rejected
-  averageRating      Float?
-  ratingCount        Int      @default(0)
-  coverImage         Json?    // Changed from String? to Json? with _id and url
-  gallery            Json?    // Keep for backward compatibility
-  albums             Album[]  // New relation to albums
-  businessHours      String?
-  
-  // Relations
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categories         ServiceProviderCategory[]
-  jobs               Job[]    @relation("ProviderJobs")
-  reviews            Review[] @relation("ProviderReviews")
-  skills             ServiceProviderSkill[]
-  subCategories      ServiceProviderSubCategory[]
-  providerAccreditations ProviderAccreditation[]
-}
-
-model ServiceCategory {
-  id                     Int                      @id @default(autoincrement())
-  name                   String                   @unique
-  description            String?
-  icon                   String?
-  status                 String                   @default("active") // active, inactive
-  createdAt              DateTime                 @default(now())
-  questions              CategoryQuestion[]
-  
-  // Relations
-  serviceProviders       ServiceProviderCategory[]
-  skills                 Skill[]
-  subCategories          ServiceSubCategory[]
-}
-
-model ServiceProviderCategory {
-  id                 Int              @id @default(autoincrement())
-  serviceProviderId  Int
-  categoryId         Int
-  
-  // Relations
-  serviceProvider    ServiceProvider  @relation(fields: [serviceProviderId], references: [id], onDelete: Cascade)
-  category           ServiceCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  
-  @@unique([serviceProviderId, categoryId])
-}
-
-model Skill {
-  id               Int             @id @default(autoincrement())
-  title            String          // Changed from question
-  categoryId       Int
-  
-  // Relations
-  category         ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  serviceProviders ServiceProviderSkill[]
-}
-
-model ServiceProviderSkill {
-  id                 Int              @id @default(autoincrement())
-  serviceProviderId  Int
-  skillId            Int
-  
-  // Relations
-  serviceProvider    ServiceProvider  @relation(fields: [serviceProviderId], references: [id], onDelete: Cascade)
-  skill              Skill            @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  
-  @@unique([serviceProviderId, skillId])
-}
-
-model Job {
-  id                Int        @id @default(autoincrement())
-  title             String
-  description       String
-  customerId        Int
-  serviceProviderId Int?
-  categoryId        Int
-  status            JobStatus  @default(NEW)
-  postcode          String
-  address           String?
-  details           String?    // JSON string for job details
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
-  completedAt       DateTime?
-  
-  // Relations
-  customer          User       @relation("CustomerJobs", fields: [customerId], references: [id])
-  serviceProvider   ServiceProvider? @relation("ProviderJobs", fields: [serviceProviderId], references: [id])
-  review            Review?
-}
-
-model Review {
-  id                Int       @id @default(autoincrement())
-  jobId             Int       @unique
-  customerId        Int
-  serviceProviderId Int
-  rating            Int
-  comment           String?
-  createdAt         DateTime  @default(now())
-  
-  // Relations
-  job               Job       @relation(fields: [jobId], references: [id])
-  customer          User      @relation("CustomerReviews", fields: [customerId], references: [id])
-  serviceProvider   ServiceProvider @relation("ProviderReviews", fields: [serviceProviderId], references: [id])
-}
-
-model CategoryQuestion {
-  id           Int      @id @default(autoincrement())
-  categoryId   Int
-  questionText String
-  orderIndex   Int      @default(0)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  
-  // Relations
-  category     ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  options      QuestionOption[]
-  nextQuestions QuestionFlow[] @relation("ParentQuestion")
-}
-
-model QuestionOption {
-  id             Int      @id @default(autoincrement())
-  questionId     Int
-  optionText     String   // Keep this for backwards compatibility
-  description    String?
-  orderIndex     Int      @default(0)
-  subCategoryId  Int?     // New field to link with a subcategory
-  
-  // Relations
-  question       CategoryQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  subCategory    ServiceSubCategory? @relation(fields: [subCategoryId], references: [id])
-  flows          QuestionFlow[] @relation("SourceOption")
-}
-
-model QuestionFlow {
-  id               Int      @id @default(autoincrement())
-  sourceOptionId   Int      @unique
-  nextQuestionId   Int?
-  isTerminal       Boolean  @default(false)
-  
-  // Relations
-  sourceOption     QuestionOption @relation("SourceOption", fields: [sourceOptionId], references: [id], onDelete: Cascade)
-  nextQuestion     CategoryQuestion? @relation("ParentQuestion", fields: [nextQuestionId], references: [id])
-}
-
-model BlogCategory {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  slug        String   @unique
-  description String?
-  status      String   @default("active") // active, inactive
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  blogs       Blog[]
-}
-
-model Blog {
-  id           Int          @id @default(autoincrement())
-  title        String
-  slug         String       @unique
-  content      String       // Markdown/rich text content
-  excerpt      String?      // Short description for previews
-  featuredImage Json?     // URL to featured image
-  publishedAt  DateTime?    // Null means draft status
-  categoryId   Int
-  viewCount    Int          @default(0)
-  status       String       @default("draft") // draft, published
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  
-  // Relations
-  category     BlogCategory @relation(fields: [categoryId], references: [id])
-  
-  @@index([slug])
-  @@index([categoryId])
-  @@index([status])
-}
-
-model Faq {
-  id          Int      @id @default(autoincrement())
-  question    String
-  answer      String
-  status      String   @default("active") // active, inactive
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// New model for sub-categories with hierarchical structure
-model ServiceSubCategory {
-  id                 Int                @id @default(autoincrement())
-  name               String
-  description        String?
-  status             String             @default("active") // active, inactive
-  categoryId         Int                // Parent category
-  parentSubCategoryId Int?              // Optional parent sub-category for nesting
-  createdAt          DateTime           @default(now())
-  
-  // Relations
-  category           ServiceCategory    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  parentSubCategory  ServiceSubCategory? @relation("SubCategoryHierarchy", fields: [parentSubCategoryId], references: [id])
-  childSubCategories ServiceSubCategory[] @relation("SubCategoryHierarchy")
-  
-  // Other relations
-  serviceProviders   ServiceProviderSubCategory[]
-  questionOptions    QuestionOption[]
-  
-  @@unique([categoryId, name])
-}
-
-// Update service provider to link with subcategories
-model ServiceProviderSubCategory {
-  id                 Int              @id @default(autoincrement())
-  serviceProviderId  Int
-  subCategoryId      Int
-  
-  // Relations
-  serviceProvider    ServiceProvider  @relation(fields: [serviceProviderId], references: [id], onDelete: Cascade)
-  subCategory        ServiceSubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
-  
-  @@unique([serviceProviderId, subCategoryId])
-}
-
-// New models for album-based gallery system
-
-model Album {
-  id                Int              @id @default(autoincrement())
-  title             String
-  description       String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  serviceProviderId Int
-  itemCount         Int              @default(0)
-  serviceProvider   ServiceProvider  @relation(fields: [serviceProviderId], references: [id], onDelete: Cascade)
-  items             AlbumItem[]
-}
-
-model AlbumItem {
-  id                Int              @id @default(autoincrement())
-  type              String           // "image" or "video"
-  fileId            String?          // For images: the file ID in storage
-  url               String           // The URL to the resource
-  caption           String?          // Optional caption
-  orderIndex        Int              @default(0) // For ordering items
-  tags              String[]         // Tags like "Before", "After", "During", etc.
-  rotation          Int              @default(0) // New field for rotation (0, 90, 180, 270)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  albumId           Int
-  album             Album            @relation(fields: [albumId], references: [id], onDelete: Cascade)
-}
-
-model Accreditation {
-  id          Int           @id @default(autoincrement())
-  name        String
-  description String?
-  status      String        @default("active") // active, inactive
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  image       Json?
-  
-  // Relations
-  providerAccreditations ProviderAccreditation[]
-}
-
-model ProviderAccreditation {
-  id                Int           @id @default(autoincrement())
-  serviceProviderId Int
-  accreditationId   Int?          // Changed from Int to Int? to allow null for custom accreditations
-  status            String        @default("pending") // pending, approved, rejected
-  expiryDate        DateTime?
-  proofDocument     Json?         // Will store _id and url like other file uploads
-  notes             String?       // Admin notes or rejection reason
-  isCustom          Boolean       @default(false) // Whether this is a custom accreditation added by provider
-  customName        String?       // For custom accreditations
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  
-  // Relations
-  serviceProvider   ServiceProvider @relation(fields: [serviceProviderId], references: [id], onDelete: Cascade)
-  accreditation     Accreditation?  @relation(fields: [accreditationId], references: [id]) // Relation remains optional, now consistent with accreditationId being Int?
-  
-  // Note: PostgreSQL treats NULLs as distinct in unique constraints by default.
-  // This means a service provider can have multiple custom accreditations (where accreditationId is NULL)
-  // without violating this constraint.
-  @@unique([serviceProviderId, accreditationId])
-}
-
-// New models for dynamic pages and blocks
-
-model Page {
-  id            Int       @id @default(autoincrement())
-  title         String
-  slug          String    @unique
-  description   String?   // Meta description for SEO
-  status        String    @default("draft") // draft, published
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  authorId      Int
-  author        User      @relation(fields: [authorId], references: [id])
-  blocks        Block[]   // Relation to blocks
-  metaTitle     String?   // For SEO
-  metaKeywords  String?   // For SEO
-  ogImage       Json?     // Open Graph image for social media sharing
-  featuredImage Json?     // Featured image for the page
-  
-  @@index([slug])
-  @@index([status])
-}
-
-model Block {
-  id            Int       @id @default(autoincrement())
-  type          String    // Type of block (hero, slider, faq, etc.)
-  title         String?   // Optional title for the block
-  content       Json      // Flexible JSON content based on block type
-  orderIndex    Int       // For ordering blocks on the page
-  status        String    @default("active") // active, inactive
-  pageId        Int       // Relation to page
-  page          Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-}
-
-// Block Templates that can be reused across pages
-model BlockTemplate {
-  id            Int       @id @default(autoincrement())
-  name          String    @unique
-  type          String    // Type of block template
-  content       Json      // Default content structure
-  status        String    @default("active") // active, inactive
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-}
-
-
-
-
-
-
-
-
-
-
-
-

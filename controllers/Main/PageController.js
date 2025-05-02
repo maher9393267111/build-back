@@ -52,7 +52,8 @@ exports.getPublishedPages = async (req, res) => {
             select: {
                 id: true,
                 title: true,
-                slug: true
+                slug: true,
+                isMainPage: true
             },
             orderBy: {
                 createdAt: 'asc'
@@ -111,7 +112,7 @@ exports.getPage = async (req, res) => {
 // Create a new page
 exports.createPage = async (req, res) => {
     try {
-        const { title, slug, description, metaTitle, metaKeywords, ogImage, featuredImage, blocks } = req.body;
+        const { title, slug, description, metaTitle, metaKeywords, ogImage, featuredImage, blocks, isMainPage, canonicalUrl, structuredData, robots } = req.body;
         
         // Check if slug is unique
         const existingPage = await prisma.page.findUnique({
@@ -120,6 +121,15 @@ exports.createPage = async (req, res) => {
         
         if (existingPage) {
             return res.status(400).json({ error: 'A page with this slug already exists' });
+        }
+        
+
+        // If isMainPage is true, reset any existing main page
+        if (isMainPage) {
+            await prisma.page.updateMany({
+                where: { isMainPage: true },
+                data: { isMainPage: false }
+            });
         }
         
         // Create the page
@@ -133,7 +143,11 @@ exports.createPage = async (req, res) => {
                 ogImage,
                 featuredImage,
                 authorId: req.user.id,
-                status: req.body.status || 'draft'
+                status: req.body.status || 'draft',
+                isMainPage: isMainPage || false,
+                canonicalUrl,
+                structuredData,
+                robots
             }
         });
         
@@ -184,7 +198,7 @@ exports.createPage = async (req, res) => {
 exports.updatePage = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, slug, description, metaTitle, metaKeywords, ogImage, featuredImage, status, blocks } = req.body;
+        const { title, slug, description, metaTitle, metaKeywords, ogImage, featuredImage, status, blocks, isMainPage, canonicalUrl, structuredData, robots } = req.body;
         
         // Check if page exists
         const existingPage = await prisma.page.findUnique({
@@ -207,6 +221,17 @@ exports.updatePage = async (req, res) => {
             }
         }
         
+        // If isMainPage is being set to true, reset any existing main page
+        if (isMainPage && !existingPage.isMainPage) {
+            await prisma.page.updateMany({
+                where: { 
+                    isMainPage: true,
+                    id: { not: parseInt(id) }
+                },
+                data: { isMainPage: false }
+            });
+        }
+        
         // Update the page
         const updatedPage = await prisma.page.update({
             where: { id: parseInt(id) },
@@ -219,6 +244,10 @@ exports.updatePage = async (req, res) => {
                 ogImage,
                 featuredImage,
                 status,
+                isMainPage: isMainPage !== undefined ? isMainPage : existingPage.isMainPage,
+                canonicalUrl,
+                structuredData,
+                robots,
                 updatedAt: new Date()
             }
         });
@@ -325,5 +354,39 @@ exports.deletePage = async (req, res) => {
     } catch (error) {
         console.error('Error deleting page:', error);
         return res.status(500).json({ error: 'Failed to delete page' });
+    }
+};
+
+// Add new endpoint to get the main page
+exports.getMainPage = async (req, res) => {
+    try {
+        const mainPage = await prisma.page.findFirst({
+            where: {
+                isMainPage: true,
+                status: 'published'
+            },
+            include: {
+                blocks: {
+                    orderBy: {
+                        orderIndex: 'asc'
+                    }
+                },
+                author: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                }
+            }
+        });
+        
+        if (!mainPage) {
+            return res.status(404).json({ error: 'Main page not found' });
+        }
+        
+        return res.status(200).json(mainPage);
+    } catch (error) {
+        console.error('Error fetching main page:', error);
+        return res.status(500).json({ error: 'Failed to fetch main page' });
     }
 }; 
