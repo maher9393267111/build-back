@@ -1,13 +1,11 @@
+
+
 const express = require("express");
-
-
-
 const multer = require("multer");
 const path = require("path");
-
 const crypto = require("crypto");
-// const multer = require('multer');
 const sharp = require("sharp");
+const { PrismaClient } = require('@prisma/client');
 const {
   S3Client,
   ListBucketsCommand,
@@ -18,12 +16,10 @@ const {
 
 const { JSDOM } = require('jsdom');
 
-
+const prisma = new PrismaClient();
 const validFileTypes = ["*/*"];
 
 const storage = multer.memoryStorage();
-
-
 
 const upload = multer({
   storage,
@@ -52,18 +48,21 @@ const s3Client = new S3Client({
   },
 });
 
-//any file name accept
-
+// Flag to determine if uploaded file should be added to media library
 fileRouter.post("/uploadfile", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file was uploaded" });
     }
 
-    
-
     const file = req.file;
+    const addToMediaLibrary = req.body.addToMediaLibrary === 'true';
+    const setAsInUse = req.body.setAsInUse === 'true'; // New parameter to control inUse flag
+    
     console.log("FILE-->🔞 🌐🌐🔞 🌐🌐", file);
+    console.log("Add to Media Library:", addToMediaLibrary);
+    console.log("Set as in use:", setAsInUse);
+    
     const fileName = `${crypto.randomBytes(32).toString("hex")}${path.extname(
       file.originalname
     )}`;
@@ -102,9 +101,37 @@ fileRouter.post("/uploadfile", upload.single("file"), async (req, res) => {
       mimeType: file.mimetype,
       size: file.size,
       createdAt: new Date().toISOString(),
-     
-      isDefaultImage: false
+      isDefaultImage: false,
+      fromMediaLibrary: false
     };
+
+    
+    // If addToMediaLibrary flag is true, add to the Media table
+    if (addToMediaLibrary) {
+      try {
+        const mediaEntry = await prisma.media.create({
+          data: {
+            name: file.originalname || 'Untitled',
+            fileId: fileName,
+            url: response.url,
+            type: fileType,
+            mimeType: file.mimetype,
+            size: file.size,
+            originalName: file.originalname,
+            isDefaultImage: false,
+            inUse: setAsInUse // Use the parameter value instead of hardcoding to true
+          }
+        });
+        
+        response.mediaId = mediaEntry.id;
+        response.fromMediaLibrary = true;
+        
+        console.log("Added to media library:", mediaEntry.id);
+      } catch (dbError) {
+        console.error('Error adding to media library:', dbError);
+        // Continue even if adding to media library fails
+      }
+    }
 
     console.log("File uploaded successfully:", response);
     res.status(200).json(response);
@@ -116,12 +143,9 @@ fileRouter.post("/uploadfile", upload.single("file"), async (req, res) => {
   }
 });
 
-
-
-
 fileRouter.delete("/deletefile", async (req, res) => {
   try {
-    const { fileName } = req.query;
+    const { fileName, skipMediaCheck } = req.query;
 
     console.log("DELETE BODY-->", req.query);
 
@@ -129,7 +153,31 @@ fileRouter.delete("/deletefile", async (req, res) => {
       return res.status(400).json({ message: "No file name provided" });
     }
 
+    // Check if this file is in the media library and is being used elsewhere
+    if (skipMediaCheck !== 'true') {
+      const mediaItem = await prisma.media.findUnique({
+        where: { fileId: fileName }
+      });
+      
+      if (mediaItem) {
+        if (mediaItem.inUse) {
+          // Just update the media record to mark this particular usage as removed
+          console.log("File is in media library and in use. Not deleting from S3.");
+          return res.json({ 
+            message: "File is in media library. Not deleted from storage.",
+            fromMediaLibrary: true,
+            mediaId: mediaItem.id
+          });
+        } else {
+          // If in media library but not in use elsewhere, delete both records
+          await prisma.media.delete({
+            where: { id: mediaItem.id }
+          });
+        }
+      }
+    }
     
+    // Delete from S3
     const deleteParams = {
       Bucket: bucketName,
       Key: `build/${fileName}` ,
@@ -145,17 +193,53 @@ fileRouter.delete("/deletefile", async (req, res) => {
   }
 });
 
-
-
-
-
-
-
-
-
-
-
-
+// New endpoint to select from media library
+fileRouter.get("/media-library", async (req, res) => {
+  try {
+    const { page = 1, limit = 20, type, search } = req.query;
+    const skip = (page - 1) * parseInt(limit);
+    
+    // Build filter object
+    let where = {};
+    
+    if (type) {
+      where.type = type;
+    }
+    
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { originalName: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    
+    // Get media items with count
+    const [media, total] = await Promise.all([
+      prisma.media.findMany({
+        where,
+        skip,
+        take: parseInt(limit),
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.media.count({ where })
+    ]);
+    
+    const totalPages = Math.ceil(total / parseInt(limit));
+    
+    res.status(200).json({
+      media,
+      pagination: {
+        total,
+        totalPages,
+        currentPage: parseInt(page),
+        pageSize: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching media library:', error);
+    res.status(500).json({ error: 'Failed to fetch media library' });
+  }
+});
 
 // ------------------------SLIDER------------
 

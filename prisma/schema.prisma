@@ -71,10 +71,35 @@ model Blog {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   category      BlogCategory @relation(fields: [categoryId], references: [id])
+  metaTitle     String?      // For SEO
+  metaDescription String?    // For SEO meta description
+  metaKeywords  String?      // For SEO
+  ogImage       Json?        // Open Graph image for social media sharing
+  canonicalUrl  String?      // Canonical URL for SEO
+  structuredData Json?       // Structured data for SEO (JSON-LD)
+  robots        String?      // Robots meta tag content
 
   @@index([slug])
   @@index([categoryId])
   @@index([status])
+}
+
+model Media {
+  id            Int      @id @default(autoincrement())
+  name          String
+  fileId        String   @unique // The S3 file ID
+  url           String
+  type          String   // image, video, document, etc.
+  mimeType      String?
+  size          Int?
+  originalName  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  isDefaultImage Boolean @default(false)
+  inUse         Boolean  @default(false) // Track if the media is being used
+  
+  @@index([type])
+  @@index([inUse])
 }
 
 model Faq {
@@ -156,4 +181,24 @@ enum JobStatus {
   COMPLETED
   CANCELLED
   INACTIVE
+}
+
+model SiteSettings {
+  id              Int      @id @default(autoincrement())
+  title           String
+  description     String?
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  ogImage         Json?
+  logo            Json?
+  footerLogo      Json?
+  primaryColor    String   @default("#2563eb")
+  footerText      String?
+  footerLinks     Json?
+  socialLinks     Json?
+  scripts         Json?    // For Google Analytics, chat scripts, etc.
+  navTitles       Json?    // Navigation titles configuration
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

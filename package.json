@@ -19,6 +19,7 @@
   "description": "",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.787.0",
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.20.0",
     "@sendgrid/mail": "^8.1.5",
     "axios": "^1.8.4",

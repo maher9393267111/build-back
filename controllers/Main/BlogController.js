@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const slugify = require('slugify');
+const { uploadMediaFile , singleFileDelete } = require('../../utils/S3Utils');
 
 // List blogs with pagination, search, and category filtering (Public)
 exports.list = async (req, res) => {
@@ -152,7 +153,15 @@ exports.create = async (req, res) => {
       excerpt, 
       featuredImage, 
       categoryId, 
-      status = 'draft'
+      status = 'draft',
+      // SEO fields
+      metaTitle,
+      metaDescription,
+      metaKeywords,
+      ogImage,
+      canonicalUrl,
+      structuredData,
+      robots
     } = req.body;
     
     if (!title || !content || !categoryId) {
@@ -184,7 +193,15 @@ exports.create = async (req, res) => {
       excerpt: excerpt || title.substring(0, 150),
       categoryId: parseInt(categoryId, 10),
       status,
-      featuredImage
+      featuredImage,
+      // SEO fields
+      metaTitle: metaTitle || title,
+      metaDescription: metaDescription || excerpt || title.substring(0, 150),
+      metaKeywords,
+      ogImage,
+      canonicalUrl,
+      structuredData,
+      robots
     };
     
     // Add publishedAt date if status is published
@@ -225,7 +242,15 @@ exports.update = async (req, res) => {
       excerpt, 
       featuredImage, 
       categoryId, 
-      status 
+      status,
+      // SEO fields
+      metaTitle,
+      metaDescription,
+      metaKeywords,
+      ogImage,
+      canonicalUrl,
+      structuredData,
+      robots
     } = req.body;
     
     const blogId = parseInt(id, 10);
@@ -270,6 +295,15 @@ exports.update = async (req, res) => {
     if (content) updateData.content = content;
     if (excerpt !== undefined) updateData.excerpt = excerpt;
     if (featuredImage !== undefined) updateData.featuredImage = featuredImage;
+    
+    // SEO fields
+    if (metaTitle !== undefined) updateData.metaTitle = metaTitle;
+    if (metaDescription !== undefined) updateData.metaDescription = metaDescription;
+    if (metaKeywords !== undefined) updateData.metaKeywords = metaKeywords;
+    if (ogImage !== undefined) updateData.ogImage = ogImage;
+    if (canonicalUrl !== undefined) updateData.canonicalUrl = canonicalUrl;
+    if (structuredData !== undefined) updateData.structuredData = structuredData;
+    if (robots !== undefined) updateData.robots = robots;
     
     if (categoryId) {
       // Validate category
@@ -334,6 +368,19 @@ exports.remove = async (req, res) => {
     
     if (!existingBlog) {
       return res.status(404).json({ message: 'Blog not found' });
+    }
+
+    console.log(existingBlog.featuredImage , "existingBlog.featuredImage");
+
+    if (existingBlog.featuredImage ) {
+      await singleFileDelete(existingBlog.featuredImage?._id);
+      console.log(`Deleted featured image ${existingBlog.featuredImage?._id} for blog ${blogId}`);
+    }
+
+    // also delete the ogImage
+    if (existingBlog.ogImage ) {
+      await singleFileDelete(existingBlog.ogImage?._id);
+      console.log(`Deleted ogImage ${existingBlog.ogImage?._id} for blog ${blogId}`);
     }
     
     await prisma.blog.delete({
@@ -478,44 +525,36 @@ exports.getRelated = async (req, res) => {
   }
 };
 
-
-
-
-
-
 // Get a blog by ID (Admin only)
-
-
-
 exports.getBlogById = async (req, res) => {
-    try {
-      const { id } = req.params;
-      
-      const blogId = parseInt(id, 10);
-      if (isNaN(blogId)) {
-        return res.status(400).json({ message: 'Invalid blog ID' });
-      }
-      
-      const blog = await prisma.blog.findFirst({
-        where: { id: blogId },
-        include: {
-          category: {
-            select: {
-              id: true,
-              name: true,
-              slug: true
-            }
+  try {
+    const { id } = req.params;
+    
+    const blogId = parseInt(id, 10);
+    if (isNaN(blogId)) {
+      return res.status(400).json({ message: 'Invalid blog ID' });
+    }
+    
+    const blog = await prisma.blog.findFirst({
+      where: { id: blogId },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true
           }
         }
-      });
-      
-      if (!blog) {
-        return res.status(404).json({ message: 'Blog not found' });
       }
-      
-      return res.status(200).json({ blog });
-    } catch (error) {
-      console.error('Error fetching blog by ID:', error);
-      return res.status(500).json({ message: 'Error fetching blog' });
+    });
+    
+    if (!blog) {
+      return res.status(404).json({ message: 'Blog not found' });
     }
-  };
+    
+    return res.status(200).json({ blog });
+  } catch (error) {
+    console.error('Error fetching blog by ID:', error);
+    return res.status(500).json({ message: 'Error fetching blog' });
+  }
+};
