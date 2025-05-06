@@ -12,7 +12,8 @@
     "migrate": "npx prisma migrate deploy",
     "reset": "npx prisma migrate reset",
     "generate": "npx prisma generate",
-    "remove-node": "rm -rf node_modules package-lock.json && npm install"
+    "remove-node": "rm -rf node_modules package-lock.json && npm install",
+    "migrate-data": "node scripts/migrate-data.js"
   },
   "author": "",
   "license": "ISC",
