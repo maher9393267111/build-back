@@ -8,7 +8,7 @@
     "build": "prisma generate",
     "postinstall": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "makemigration": "npx prisma migrate dev",
+    "mg": "npx prisma migrate dev",
     "migrate": "npx prisma migrate deploy",
     "reset": "npx prisma migrate reset",
     "generate": "npx prisma generate",

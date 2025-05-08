@@ -695,8 +695,7 @@ router.post('/blog-content-suggestions', auth, async (req, res) => {
     }
     
     // Build prompt for blog content suggestions
-    const prompt = `
-    As a professional content writer with 8+ years experience crafting viral blog content, analyze this blog and provide suggestions that sound like they came from a seasoned editor:
+    const prompt = `    As a professional content writer with 8+ years experience crafting viral blog content, analyze this blog and provide suggestions that sound like they came from a seasoned editor:
 
     **Blog Title:** ${blogData.title || 'N/A'}
     **Category:** ${blogData.category || 'N/A'}

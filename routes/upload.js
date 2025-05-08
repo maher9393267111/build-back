@@ -193,6 +193,37 @@ fileRouter.delete("/deletefile", async (req, res) => {
   }
 });
 
+
+
+//normal delete file no logic of media 
+fileRouter.delete("/deletefile-normal", async (req, res) => {
+  try {
+    const { fileName } = req.query;
+
+    console.log("DELETE BODY-->", req.query);
+
+    if (!fileName) {
+      return res.status(400).json({ message: "No file name provided" });
+    }
+
+    
+    const deleteParams = {
+      Bucket: bucketName,
+      Key: `build/${fileName}` ,
+    };
+
+    await s3Client.send(new DeleteObjectCommand(deleteParams));
+
+    console.log("File deleted successfully:", fileName);
+    res.json({ message: "File deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
+
 // New endpoint to select from media library
 fileRouter.get("/media-library", async (req, res) => {
   try {

@@ -19,10 +19,12 @@ const { fileRouter } = require("./routes/upload");
 const blogRouter = require("./routes/blog");
 const faqRouter = require("./routes/faq");
 const pageRouter = require("./routes/page");
+const formRouter = require("./routes/form");
 const sitemapRouter = require('./routes/sitemap');
 const mediaRouter = require('./routes/media');
 const seoRouter = require('./routes/seo');
 const siteSettingsRouter = require('./routes/siteSettings');
+
 
 // Import Controllers
 const authController = require("./controllers/Main/AuthController");
@@ -46,6 +48,7 @@ app.use("/api", fileRouter);
 app.use("/api", blogRouter);
 app.use("/api", faqRouter);
 app.use("/api", pageRouter);
+app.use("/api", formRouter);
 app.use('/api', sitemapRouter);
 app.use('/api', mediaRouter);
 app.use('/api', seoRouter);

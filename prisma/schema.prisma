@@ -24,6 +24,7 @@ model User {
         
   pages              Page[]
 
+
 }
 
 
@@ -202,4 +203,70 @@ model SiteSettings {
   linksInfo       Json?    // New field for advanced navigation structure
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model Form {
+  id              Int              @id @default(autoincrement())
+  title           String
+  slug            String           @unique
+  description     String?
+  status          String           @default("draft") // draft, published
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  authorId        Int
+  // author          User             @relation(fields: [authorId], references: [id])
+  fields          FormField[]
+  submissions     FormSubmission[]
+  
+  @@index([status])
+  @@index([slug])
+}
+
+model FormField {
+  id              Int                @id @default(autoincrement())
+  formId          Int
+  form            Form               @relation(fields: [formId], references: [id], onDelete: Cascade)
+  type            String            // text, email, number, select, checkbox, radio, file, etc.
+  label           String
+  placeholder     String?
+  isRequired      Boolean           @default(false)
+  orderIndex      Int
+  note            String?
+  options         FormFieldOption[]
+  nextQuestionId  Int?              // For conditional logic
+  isExpired       Boolean           @default(false)  // For file fields
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([formId])
+  @@index([type])
+}
+
+model FormFieldOption {
+  id              Int                @id @default(autoincrement())
+  fieldId         Int
+  field           FormField          @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  label           String
+  value           String?
+  image           Json?              // Store uploaded image
+  nextQuestionId  Int?              // Next question to display if this option is selected
+  isEnd           Boolean?           @default(false)
+  orderIndex      Int
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([fieldId])
+}
+
+model FormSubmission {
+  id              Int                @id @default(autoincrement())
+  formId          Int
+  form            Form               @relation(fields: [formId], references: [id], onDelete: Cascade)
+  data            Json              // Submitted form data
+  status          String            @default("new") // new, processed, closed
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  @@index([formId])
+  @@index([status])
 }
