@@ -471,6 +471,7 @@ exports.submitForm = async (req, res) => {
     try {
         const { id } = req.params;
         const formData = req.body;
+        console.log('formData', JSON.stringify(formData))
         
         // Check if form exists
         const form = await prisma.form.findUnique({

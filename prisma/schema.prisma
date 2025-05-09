@@ -201,6 +201,7 @@ model SiteSettings {
   scripts         Json?
   navTitles       Json?
   linksInfo       Json?    // New field for advanced navigation structure
+  contactSection  Json?    // New field for contact details: phones, emails, map, admin email
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

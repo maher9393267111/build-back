@@ -292,13 +292,14 @@ exports.updatePage = async (req, res) => {
                     });
                 } else {
                     // Create new block
+                    const { id: blockId, ...blockDataWithoutId } = block; // Remove the id field from the data
                     await prisma.block.create({
                         data: {
-                            type: block.type,
-                            title: block.title,
-                            content: block.content,
-                            orderIndex: block.orderIndex || i,
-                            status: block.status || 'active',
+                            type: blockDataWithoutId.type,
+                            title: blockDataWithoutId.title,
+                            content: blockDataWithoutId.content,
+                            orderIndex: blockDataWithoutId.orderIndex || i,
+                            status: blockDataWithoutId.status || 'active',
                             pageId: parseInt(id)
                         }
                     });
