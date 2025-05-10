@@ -3,3 +3,5 @@ node_modules
 
 #upload file 
 uploads/
+
+services/google-credentials.json
