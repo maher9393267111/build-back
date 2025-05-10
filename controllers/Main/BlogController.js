@@ -558,3 +558,117 @@ exports.getBlogById = async (req, res) => {
     return res.status(500).json({ message: 'Error fetching blog' });
   }
 };
+
+// Get recent posts
+exports.getRecentPosts = async (req, res) => {
+  try {
+    const { limit = 3 } = req.query;
+    const limitNum = parseInt(limit, 10);
+    
+    const recentPosts = await prisma.blog.findMany({
+      where: { status: 'published' },
+      orderBy: { publishedAt: 'desc' },
+      take: limitNum,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        featuredImage: true,
+        publishedAt: true,
+        createdAt: true
+      }
+    });
+    
+    return res.status(200).json({ posts: recentPosts });
+  } catch (error) {
+    console.error('Error fetching recent posts:', error);
+    return res.status(500).json({ message: 'Error fetching recent posts' });
+  }
+};
+
+// Get categories with counts
+exports.getCategoriesWithCounts = async (req, res) => {
+  try {
+    const categories = await prisma.blogCategory.findMany({
+      where: { status: 'active' },
+      include: {
+        _count: {
+          select: { blogs: { where: { status: 'published' } } }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+    
+    const categoriesWithCounts = categories.map(category => ({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      count: category._count.blogs
+    }));
+    
+    return res.status(200).json({ categories: categoriesWithCounts });
+  } catch (error) {
+    console.error('Error fetching categories with counts:', error);
+    return res.status(500).json({ message: 'Error fetching categories' });
+  }
+};
+
+// Get next and previous blog
+exports.getNextPreviousBlog = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const blogId = parseInt(id, 10);
+    
+    if (isNaN(blogId)) {
+      return res.status(400).json({ message: 'Invalid blog ID' });
+    }
+    
+    // Get current blog to determine date
+    const currentBlog = await prisma.blog.findUnique({
+      where: { id: blogId },
+      select: { publishedAt: true, categoryId: true }
+    });
+    
+    if (!currentBlog) {
+      return res.status(404).json({ message: 'Blog not found' });
+    }
+    
+    // Get the next blog (newer)
+    const nextBlog = await prisma.blog.findFirst({
+      where: {
+        publishedAt: { gt: currentBlog.publishedAt },
+        status: 'published'
+      },
+      orderBy: { publishedAt: 'asc' },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        featuredImage: true
+      }
+    });
+    
+    // Get the previous blog (older)
+    const previousBlog = await prisma.blog.findFirst({
+      where: {
+        publishedAt: { lt: currentBlog.publishedAt },
+        status: 'published'
+      },
+      orderBy: { publishedAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        featuredImage: true
+      }
+    });
+    
+    return res.status(200).json({
+      next: nextBlog,
+      previous: previousBlog
+    });
+  } catch (error) {
+    console.error('Error fetching next/previous blog:', error);
+    return res.status(500).json({ message: 'Error fetching next/previous blog' });
+  }
+};

@@ -202,6 +202,15 @@ model SiteSettings {
   navTitles       Json?
   linksInfo       Json?    // New field for advanced navigation structure
   contactSection  Json?    // New field for contact details: phones, emails, map, admin email
+
+  // New SEO fields for static pages
+  blogMetaTitle         String?
+  blogMetaDescription   String?
+  blogMetaKeywords      String?
+  contactMetaTitle      String?
+  contactMetaDescription String?
+  contactMetaKeywords   String?
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

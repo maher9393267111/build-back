@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const googleIndexingService = require('../../services/googleIndexingService');
 
 // Get all pages with pagination
 exports.getAllPages = async (req, res) => {
@@ -187,6 +188,11 @@ exports.createPage = async (req, res) => {
             }
         });
         
+        // Notify Google about the new page
+        // if (req.body.status === 'published') {
+        //     await googleIndexingService.notifyGoogleAboutPage(createdPage, 'create');
+        // }
+        
         return res.status(201).json(createdPage);
     } catch (error) {
         console.error('Error creating page:', error);
@@ -325,6 +331,11 @@ exports.updatePage = async (req, res) => {
             }
         });
         
+        // Notify Google about the updated page
+        // if (result.status === 'published') {
+        //     await googleIndexingService.notifyGoogleAboutPage(result, 'update');
+        // }
+        
         return res.status(200).json(result);
     } catch (error) {
         console.error('Error updating page:', error);
@@ -350,6 +361,9 @@ exports.deletePage = async (req, res) => {
         await prisma.page.delete({
             where: { id: parseInt(id) }
         });
+        
+        // Notify Google about the deleted page
+        // await googleIndexingService.notifyGoogleAboutPage(existingPage, 'delete');
         
         return res.status(200).json({ message: 'Page deleted successfully' });
     } catch (error) {
