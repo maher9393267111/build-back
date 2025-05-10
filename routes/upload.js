@@ -1,5 +1,3 @@
-
-
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
@@ -109,19 +107,44 @@ fileRouter.post("/uploadfile", upload.single("file"), async (req, res) => {
     // If addToMediaLibrary flag is true, add to the Media table
     if (addToMediaLibrary) {
       try {
-        const mediaEntry = await prisma.media.create({
-          data: {
-            name: file.originalname || 'Untitled',
-            fileId: fileName,
-            url: response.url,
-            type: fileType,
-            mimeType: file.mimetype,
-            size: file.size,
-            originalName: file.originalname,
-            isDefaultImage: false,
-            inUse: setAsInUse // Use the parameter value instead of hardcoding to true
-          }
+        // First check if this file already exists in the media library
+        const existingMedia = await prisma.media.findUnique({
+          where: { fileId: fileName }
         });
+        
+        let mediaEntry;
+        
+        if (existingMedia) {
+          // If it exists, update it
+          mediaEntry = await prisma.media.update({
+            where: { fileId: fileName },
+            data: {
+              name: file.originalname || 'Untitled',
+              url: response.url,
+              type: fileType,
+              mimeType: file.mimetype,
+              size: file.size,
+              originalName: file.originalname,
+              isDefaultImage: false,
+              inUse: setAsInUse
+            }
+          });
+        } else {
+          // If it doesn't exist, create it
+          mediaEntry = await prisma.media.create({
+            data: {
+              name: file.originalname || 'Untitled',
+              fileId: fileName,
+              url: response.url,
+              type: fileType,
+              mimeType: file.mimetype,
+              size: file.size,
+              originalName: file.originalname,
+              isDefaultImage: false,
+              inUse: setAsInUse
+            }
+          });
+        }
         
         response.mediaId = mediaEntry.id;
         response.fromMediaLibrary = true;

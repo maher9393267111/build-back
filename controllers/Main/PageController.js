@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const googleIndexingService = require('../../services/googleIndexingService');
 
+
 // Get all pages with pagination
 exports.getAllPages = async (req, res) => {
     try {
