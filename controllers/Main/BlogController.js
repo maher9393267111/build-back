@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const slugify = require('slugify');
 const { uploadMediaFile , singleFileDelete } = require('../../utils/S3Utils');
+const googleIndexingService = require('../../services/googleIndexingService');
 
 // List blogs with pagination, search, and category filtering (Public)
 exports.list = async (req, res) => {
@@ -221,6 +222,15 @@ exports.create = async (req, res) => {
         }
       }
     });
+
+    if (status === 'published') {
+      try {
+        await googleIndexingService.notifyGoogleAboutBlog(blog, 'create');
+      } catch (indexingError) {
+        console.error('Error notifying Google about new blog:', indexingError);
+        // Don't fail the request if Google indexing fails
+      }
+    }
     
     return res.status(201).json({ 
       message: 'Blog created successfully',
@@ -232,7 +242,170 @@ exports.create = async (req, res) => {
   }
 };
 
-// Update a blog (Admin only)
+// // Update a blog (Admin only)
+// exports.update = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { 
+//       title, 
+//       content, 
+//       excerpt, 
+//       featuredImage, 
+//       categoryId, 
+//       status,
+//       // SEO fields
+//       metaTitle,
+//       metaDescription,
+//       metaKeywords,
+//       ogImage,
+//       canonicalUrl,
+//       structuredData,
+//       robots
+//     } = req.body;
+    
+//     const blogId = parseInt(id, 10);
+//     if (isNaN(blogId)) {
+//       return res.status(400).json({ message: 'Invalid blog ID' });
+//     }
+    
+//     // Check if blog exists
+//     const existingBlog = await prisma.blog.findFirst({
+//       where: { id: blogId }
+//     });
+    
+//     if (!existingBlog) {
+//       return res.status(404).json({ message: 'Blog not found' });
+//     }
+    
+//     const updateData = {};
+    
+//     if (title) {
+//       updateData.title = title;
+      
+//       // Only update slug if title changes
+//       if (title !== existingBlog.title) {
+//         let newSlug = slugify(title, { lower: true, strict: true });
+        
+//         // Check if new slug already exists
+//         const slugExists = await prisma.blog.findFirst({
+//           where: { 
+//             slug: newSlug,
+//             id: { not: blogId }
+//           }
+//         });
+        
+//         if (slugExists) {
+//           newSlug = `${newSlug}-${Date.now()}`;
+//         }
+        
+//         updateData.slug = newSlug;
+//       }
+//     }
+    
+//     if (content) updateData.content = content;
+//     if (excerpt !== undefined) updateData.excerpt = excerpt;
+//     if (featuredImage !== undefined) updateData.featuredImage = featuredImage;
+    
+//     // SEO fields
+//     if (metaTitle !== undefined) updateData.metaTitle = metaTitle;
+//     if (metaDescription !== undefined) updateData.metaDescription = metaDescription;
+//     if (metaKeywords !== undefined) updateData.metaKeywords = metaKeywords;
+//     if (ogImage !== undefined) updateData.ogImage = ogImage;
+//     if (canonicalUrl !== undefined) updateData.canonicalUrl = canonicalUrl;
+//     if (structuredData !== undefined) updateData.structuredData = structuredData;
+//     if (robots !== undefined) updateData.robots = robots;
+    
+//     if (categoryId) {
+//       // Validate category
+//       const category = await prisma.blogCategory.findUnique({
+//         where: { id: parseInt(categoryId, 10) }
+//       });
+      
+//       if (!category) {
+//         return res.status(400).json({ message: 'Invalid category' });
+//       }
+      
+//       updateData.categoryId = parseInt(categoryId, 10);
+//     }
+    
+//     if (status) {
+//       updateData.status = status;
+      
+//       // If transitioning to published and doesn't have a publish date yet
+//       if (status === 'published' && !existingBlog.publishedAt) {
+//         updateData.publishedAt = new Date();
+//       }
+//     }
+    
+//     const blog = await prisma.blog.update({
+//       where: { id: blogId },
+//       data: updateData,
+//       include: {
+//         category: {
+//           select: {
+//             id: true,
+//             name: true,
+//             slug: true
+//           }
+//         }
+//       }
+//     });
+
+
+    
+//     return res.status(200).json({ 
+//       message: 'Blog updated successfully',
+//       blog
+//     });
+//   } catch (error) {
+//     console.error('Error updating blog:', error);
+//     return res.status(500).json({ message: 'Error updating blog' });
+//   }
+// };
+
+// // Delete a blog (Admin only)
+// exports.remove = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+    
+//     const blogId = parseInt(id, 10);
+//     if (isNaN(blogId)) {
+//       return res.status(400).json({ message: 'Invalid blog ID' });
+//     }
+    
+//     // Check if blog exists
+//     const existingBlog = await prisma.blog.findUnique({
+//       where: { id: blogId }
+//     });
+    
+//     if (!existingBlog) {
+//       return res.status(404).json({ message: 'Blog not found' });
+//     }
+
+//     console.log(existingBlog.featuredImage , "existingBlog.featuredImage");
+
+//     if (existingBlog.featuredImage ) {
+//       await singleFileDelete(existingBlog.featuredImage?._id);
+//       console.log(`Deleted featured image ${existingBlog.featuredImage?._id} for blog ${blogId}`);
+//     }
+
+//     // also delete the ogImage
+//     if (existingBlog.ogImage ) {
+//       await singleFileDelete(existingBlog.ogImage?._id);
+//       console.log(`Deleted ogImage ${existingBlog.ogImage?._id} for blog ${blogId}`);
+//     }
+    
+//     await prisma.blog.delete({
+//       where: { id: blogId }
+//     });
+    
+//     return res.status(200).json({ message: 'Blog deleted successfully' });
+//   } catch (error) {
+//     console.error('Error deleting blog:', error);
+//     return res.status(500).json({ message: 'Error deleting blog' });
+//   }
+// };
+
 exports.update = async (req, res) => {
   try {
     const { id } = req.params;
@@ -268,6 +441,7 @@ exports.update = async (req, res) => {
     }
     
     const updateData = {};
+    let slugChanged = false;
     
     if (title) {
       updateData.title = title;
@@ -289,6 +463,7 @@ exports.update = async (req, res) => {
         }
         
         updateData.slug = newSlug;
+        slugChanged = true;
       }
     }
     
@@ -318,6 +493,10 @@ exports.update = async (req, res) => {
       updateData.categoryId = parseInt(categoryId, 10);
     }
     
+    // Track status changes for Google indexing
+    const isBeingPublished = status === 'published' && existingBlog.status !== 'published';
+    const isBeingUnpublished = status !== 'published' && existingBlog.status === 'published';
+    
     if (status) {
       updateData.status = status;
       
@@ -340,6 +519,23 @@ exports.update = async (req, res) => {
         }
       }
     });
+    
+    // Handle Google indexing notifications
+    try {
+      if (isBeingPublished || (blog.status === 'published' && slugChanged)) {
+        // Notify about creation/update when published or URL changed
+        await googleIndexingService.notifyGoogleAboutBlog(blog, 'update');
+      } else if (isBeingUnpublished) {
+        // If unpublishing, notify Google about deletion
+        // Use the old slug if it was changed, otherwise use current slug
+        const blogForDeletion = slugChanged ? { ...blog, slug: existingBlog.slug } : blog;
+        console.log('delete old blog slug indexing', blogForDeletion)
+        await googleIndexingService.notifyGoogleAboutBlog(blogForDeletion, 'delete');
+      }
+    } catch (indexingError) {
+      console.error('Error notifying Google about blog update:', indexingError);
+      // Don't fail the request if Google indexing fails
+    }
     
     return res.status(200).json({ 
       message: 'Blog updated successfully',
@@ -372,15 +568,25 @@ exports.remove = async (req, res) => {
 
     console.log(existingBlog.featuredImage , "existingBlog.featuredImage");
 
-    if (existingBlog.featuredImage ) {
-      await singleFileDelete(existingBlog.featuredImage?._id);
-      console.log(`Deleted featured image ${existingBlog.featuredImage?._id} for blog ${blogId}`);
-    }
+    // if (existingBlog.featuredImage ) {
+    //   await singleFileDelete(existingBlog.featuredImage?._id);
+    //   console.log(`Deleted featured image ${existingBlog.featuredImage?._id} for blog ${blogId}`);
+    // }
 
-    // also delete the ogImage
-    if (existingBlog.ogImage ) {
-      await singleFileDelete(existingBlog.ogImage?._id);
-      console.log(`Deleted ogImage ${existingBlog.ogImage?._id} for blog ${blogId}`);
+    // // also delete the ogImage
+    // if (existingBlog.ogImage ) {
+    //   await singleFileDelete(existingBlog.ogImage?._id);
+    //   console.log(`Deleted ogImage ${existingBlog.ogImage?._id} for blog ${blogId}`);
+    // }
+    
+    // Notify Google about the deleted blog (if it was published)
+    if (existingBlog.status === 'published') {
+      try {
+        await googleIndexingService.notifyGoogleAboutBlog(existingBlog, 'delete');
+      } catch (indexingError) {
+        console.error('Error notifying Google about blog deletion:', indexingError);
+        // Don't fail the request if Google indexing fails
+      }
     }
     
     await prisma.blog.delete({
@@ -393,6 +599,7 @@ exports.remove = async (req, res) => {
     return res.status(500).json({ message: 'Error deleting blog' });
   }
 };
+
 
 // Get admin dashboard stats and blog list (Admin only)
 exports.getAdminBlogs = async (req, res) => {

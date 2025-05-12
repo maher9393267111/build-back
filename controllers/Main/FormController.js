@@ -682,4 +682,95 @@ exports.deleteFormSubmission = async (req, res) => {
         console.error('Error deleting submission:', error);
         return res.status(500).json({ error: 'Failed to delete submission' });
     }
+};
+
+// Add a note to a form submission
+exports.addNoteToSubmission = async (req, res) => {
+    try {
+        const { id, submissionId } = req.params;
+        const { content } = req.body;
+        
+        if (!content) {
+            return res.status(400).json({ error: 'Note content is required' });
+        }
+        
+        // Find the submission
+        const submission = await prisma.formSubmission.findUnique({
+            where: { id: parseInt(submissionId) }
+        });
+        
+        if (!submission) {
+            return res.status(404).json({ error: 'Submission not found' });
+        }
+        
+        // Create a new note
+        const newNote = {
+            id: Date.now(), // Use timestamp as unique ID
+            content,
+            createdAt: new Date()
+        };
+        
+        // Get existing notes or initialize empty array
+        const existingNotes = submission.notes || [];
+        
+        // Add the new note
+        await prisma.formSubmission.update({
+            where: { id: parseInt(submissionId) },
+            data: { 
+                notes: Array.isArray(existingNotes) 
+                    ? [...existingNotes, newNote] 
+                    : [newNote],
+                updatedAt: new Date()
+            }
+        });
+        
+        return res.status(200).json({ message: 'Note added successfully', note: newNote });
+    } catch (error) {
+        console.error('Error adding note:', error);
+        return res.status(500).json({ error: 'Failed to add note' });
+    }
+};
+
+// Delete a note from a form submission
+exports.deleteNoteFromSubmission = async (req, res) => {
+    try {
+        const { id, submissionId, noteId } = req.params;
+        
+        // Find the submission
+        const submission = await prisma.formSubmission.findUnique({
+            where: { id: parseInt(submissionId) }
+        });
+        
+        if (!submission) {
+            return res.status(404).json({ error: 'Submission not found' });
+        }
+        
+        // Get existing notes
+        const existingNotes = submission.notes || [];
+        
+        if (!Array.isArray(existingNotes)) {
+            return res.status(400).json({ error: 'Notes data is corrupted' });
+        }
+        
+        // Filter out the note to delete
+        const filteredNotes = existingNotes.filter(note => note.id !== parseInt(noteId));
+        
+        if (existingNotes.length === filteredNotes.length) {
+            return res.status(404).json({ error: 'Note not found' });
+        }
+        
+        // Update the submission with filtered notes
+        await prisma.formSubmission.update({
+            where: { id: parseInt(submissionId) },
+            data: { 
+                notes: filteredNotes,
+                updatedAt: new Date()
+            }
+        });
+        
+        return res.status(200).json({ message: 'Note deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting note:', error);
+        return res.status(500).json({ error: 'Failed to delete note' });
+    }
 }; 

@@ -1,21 +1,14 @@
 const { google } = require('googleapis');
-const path = require('path');
-const fs = require('fs');
+const { getGoogleCredentials } = require('./googleAuth');
 
 // Configuration
 const SITE_URL = process.env.SITE_URL || 'https://letsbuildsw.co.uk';
-const CREDENTIALS_PATH = path.join(__dirname, './google-credentials.json');
 
 // Initialize auth client
 const getJWTClient = () => {
   try {
-    // Check if credentials file exists
-    if (!fs.existsSync(CREDENTIALS_PATH)) {
-      console.error('Google API credentials file not found');
-      return null;
-    }
-
-    const credentials = require(CREDENTIALS_PATH);
+    const credentials = getGoogleCredentials();
+    
     const jwtClient = new google.auth.JWT(
       credentials.client_email,
       null,
@@ -88,3 +81,19 @@ exports.notifyGoogleAboutPage = async (page, action) => {
     console.error('Error notifying Google about page:', error);
   }
 }; 
+
+
+exports.notifyGoogleAboutBlog = async (blog, action) => {
+  try {
+    // Build the full URL for blog
+    const fullUrl = `${SITE_URL}/blog/${blog.slug}`;
+    
+    if (action === 'delete') {
+      await submitUrlToGoogle(fullUrl, 'URL_DELETED');
+    } else {
+      await submitUrlToGoogle(fullUrl, 'URL_UPDATED');
+    }
+  } catch (error) {
+    console.error('Error notifying Google about blog:', error);
+  }
+};

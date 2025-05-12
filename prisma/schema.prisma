@@ -202,6 +202,7 @@ model SiteSettings {
   navTitles       Json?
   linksInfo       Json?    // New field for advanced navigation structure
   contactSection  Json?    // New field for contact details: phones, emails, map, admin email
+  blogSection     Json?    // New field for blog hero settings - heroImage, heroTitle
 
   // New SEO fields for static pages
   blogMetaTitle         String?
@@ -274,9 +275,13 @@ model FormSubmission {
   form            Form               @relation(fields: [formId], references: [id], onDelete: Cascade)
   data            Json              // Submitted form data
   status          String            @default("new") // new, processed, closed
+  notes           Json?             // Notes with content and timestamp
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   
   @@index([formId])
   @@index([status])
 }
+
+
+

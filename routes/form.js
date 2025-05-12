@@ -19,4 +19,11 @@ router.get('/forms/:id/submissions/:submissionId', auth, formController.getFormS
 router.put('/forms/:id/submissions/:submissionId/status', auth, formController.updateFormSubmissionStatus);
 router.delete('/forms/:id/submissions/:submissionId', auth, formController.deleteFormSubmission);
 
+// ... existing code ...
+
+// Notes endpoints for form submissions
+router.post('/forms/:id/submissions/:submissionId/notes', auth, formController.addNoteToSubmission);
+router.delete('/forms/:id/submissions/:submissionId/notes/:noteId', auth, formController.deleteNoteFromSubmission);
+
+// ... existing code ...
 module.exports = router; 

@@ -27,13 +27,12 @@ function sendApiResponse(res, data, errorCode = null) {
 }
 
 // Initialize Google Generative AI with your API key
-const API_KEY = 
- 'AIzaSyAg2bGH7Unh701ftOV1VDkM32S0Uc20cdM';
+const API_KEY = 'AIzaSyA3T_xiChZ5clOaH08myAH1p3DVTLj7izk';
 
-const genAI = new GoogleGenerativeAI(API_KEY);
+const genAI = new GoogleGenerativeAI("AIzaSyBqphg3hNHevtO8YkssOObH3API31wWWcM");
 // Try a different model for better response time
 const model = genAI.getGenerativeModel({ 
-  model: "gemini-1.5-pro-latest",
+  model: "gemini-1.5-flash",
   systemInstruction: "You are an SEO expert assistant that always responds with valid, well-formed JSON only when asked to do so. Your responses should be concise and accurate. Focus on formatting output correctly as JSON."
 });
 
@@ -353,6 +352,151 @@ async function analyzeWithGemini(pageData, content) {
 }
 
 // Helper function to analyze Blog SEO data with Gemini
+// async function analyzeBlogWithGemini(blogData, content, requestContentSuggestions = false) {
+//   try {
+//     // Prepare the comprehensive content for analysis
+//     const prompt = `
+//     As a seasoned SEO and content strategist who has helped countless blogs rank on the first page of Google, provide a detailed analysis and actionable recommendations for this blog post:
+
+//     **Blog Metadata:**
+//     Title: ${blogData.title || 'N/A'}
+//     Meta Title: ${blogData.metaTitle || blogData.title || 'N/A'}
+//     Meta Description: ${blogData.description || 'N/A'}
+//     Meta Keywords: ${blogData.metaKeywords || 'N/A'}
+//     Category: ${blogData.category || 'N/A'}
+//     Slug: ${blogData.slug || 'N/A'}
+//     Canonical URL: ${blogData.canonicalUrl || 'N/A'}
+//     Robots: ${blogData.robots || 'index, follow'}
+//     OG Image: ${blogData.ogImage ? 'Present' : 'Missing'}
+
+//     **Blog Content:**
+//     ${content || 'No content provided for analysis.'}
+
+//     ${requestContentSuggestions ? 'Also provide nuanced content suggestions and improvements that read like they were written by an experienced content marketer.' : ''}
+
+//     Provide the following in a single, valid JSON format:
+
+//     **Overall Blog SEO Analysis:**
+//     1. "seoScore": number from 0-100 (overall blog SEO)
+//     2. "titleScore": number from 0-100
+//     3. "titleAnalysis": string with analysis of blog title
+//     4. "titleSuggestions": array of blog title suggestions
+//     5. "metaDescriptionScore": number from 0-100
+//     6. "metaDescriptionAnalysis": string with analysis
+//     7. "metaDescriptionSuggestions": array of suggestions
+//     8. "keywordsScore": number from 0-100 (based on meta keywords)
+//     9. "keywordsAnalysis": string with analysis
+//     10. "recommendedKeywords": array of keywords (overall suggestions)
+//     11. "urlStructureScore": number from 0-100
+//     12. "urlStructureAnalysis": string with analysis
+//     13. "contentStructureScore": number from 0-100 (based on headings, organization)
+//     14. "contentStructureRecommendations": string with recommendations
+//     15. "additionalRecommendations": array of general blog SEO recommendations
+
+//     **Blog Content Optimization Analysis:**
+//     16. "contentScore": number from 0-100 (based on provided text content)
+//     17. "keywordDensity": object with "analysis" string and "keywords" array of objects with "keyword" and "density" properties
+//     18. "readabilityScore": number from 0-100 (Flesch-Kincaid or similar)
+//     19. "contentImprovementSuggestions": array of specific suggestions for improving the blog
+//     20. "suggestedHeadingStructure": array of heading suggestions (e.g. ["H1: Main title", "H2: First section", etc.])
+//     21. "recommendedContentLength": recommended word count for this blog topic
+//     22. "readingTimeEstimate": estimated reading time in minutes
+//     23. "categoryRelevance": number from 0-100 indicating how well the content matches its category
+//     24. "targetAudience": string describing the likely target audience for this content
+//     25. "searchIntent": string analyzing the search intent this article would satisfy
+
+//     **Blog-Specific Content Enhancement:**
+//     26. "blogTitleSuggestions": array of 5 catchy alternative blog titles
+//     27. "introductionSuggestions": array of suggestions to improve the intro paragraph
+//     28. "conclusionSuggestions": array of suggestions to improve the conclusion
+//     29. "blogOutlineStructure": array of suggested sections for a well-structured blog on this topic
+//     30. "engagementTips": array of tips to make the content more engaging
+
+//     Format your response as valid, parseable JSON only. Ensure all keys are present even if the value is null or empty array/object.
+//     `;
+    
+//     // Generate content with Gemini
+//     let responseData;
+//     try {
+//       // Use retry mechanism without timeout
+//       const makeAIRequest = async () => {
+//         const result = await model.generateContent(prompt);
+//         return result;
+//       };
+      
+//       // Attempt the call with retries
+//       const result = await retryWithBackoff(makeAIRequest);
+//       const response = await result.response;
+//       const text = response.text();
+//       console.log("BLOG SEO RESPONSE ---", text);
+      
+//       try {
+//         // Use the safe JSON parse helper
+//         responseData = safeJsonParse(text);
+//         // Use blog-specific normalization for additional fields
+//         responseData = normalizeBlogResponseData(responseData);
+//       } catch (parseError) {
+//         // If parsing fails, return a structured response
+//         console.error('Error parsing Gemini blog analysis response:', parseError);
+//         responseData = { 
+//           seoScore: 0,
+//           titleScore: 0,
+//           metaDescriptionScore: 0,
+//           keywordsScore: 0,
+//           urlStructureScore: 0,
+//           contentStructureScore: 0,
+//           titleAnalysis: "Analysis Error",
+//           metaDescriptionAnalysis: "Analysis Error",
+//           keywordsAnalysis: "Analysis Error",
+//           urlStructureAnalysis: "Analysis Error",
+//           contentStructureRecommendations: "Analysis Error",
+//           titleSuggestions: [],
+//           metaDescriptionSuggestions: [],
+//           recommendedKeywords: [],
+//           additionalRecommendations: [],
+//           contentScore: 0,
+//           keywordDensity: {},
+//           readabilityScore: 0,
+//           contentImprovementSuggestions: [],
+//           suggestedHeadingStructure: [],
+//           recommendedContentLength: 0,
+//           // Blog-specific fields
+//           blogTitleSuggestions: [],
+//           introductionSuggestions: [],
+//           conclusionSuggestions: [],
+//           blogOutlineStructure: [],
+//           engagementTips: [],
+//           readingTimeEstimate: 0,
+//           categoryRelevance: 0,
+//           targetAudience: "Analysis Error",
+//           searchIntent: "Analysis Error",
+//           error: true, 
+//           rawResponse: text,
+//           message: 'Received non-JSON response from AI' 
+//         };
+//       }
+//     } catch (aiError) {
+//       console.error('Error generating blog analysis with AI:', aiError);
+//       responseData = {
+//         seoScore: 0,
+//         error: true,
+//         message: 'Error generating blog SEO analysis with AI',
+//         details: aiError.message
+//       };
+//     }
+    
+//     return responseData;
+//   } catch (error) {
+//     console.error('Error in analyzeBlogWithGemini:', error);
+//     return { 
+//       seoScore: 0,
+//       error: true, 
+//       message: error.message || 'Failed to analyze blog with Gemini' 
+//     };
+//   }
+// }
+
+// Helper function to analyze Blog SEO data with Gemini
 async function analyzeBlogWithGemini(blogData, content, requestContentSuggestions = false) {
   try {
     // Prepare the comprehensive content for analysis
@@ -432,45 +576,12 @@ async function analyzeBlogWithGemini(blogData, content, requestContentSuggestion
       console.log("BLOG SEO RESPONSE ---", text);
       
       try {
-        // Use the safe JSON parse helper
+        // Use the safe JSON parse helper - RETURN RAW PARSED DATA WITHOUT NORMALIZATION
         responseData = safeJsonParse(text);
-        // Use blog-specific normalization for additional fields
-        responseData = normalizeBlogResponseData(responseData);
       } catch (parseError) {
         // If parsing fails, return a structured response
         console.error('Error parsing Gemini blog analysis response:', parseError);
         responseData = { 
-          seoScore: 0,
-          titleScore: 0,
-          metaDescriptionScore: 0,
-          keywordsScore: 0,
-          urlStructureScore: 0,
-          contentStructureScore: 0,
-          titleAnalysis: "Analysis Error",
-          metaDescriptionAnalysis: "Analysis Error",
-          keywordsAnalysis: "Analysis Error",
-          urlStructureAnalysis: "Analysis Error",
-          contentStructureRecommendations: "Analysis Error",
-          titleSuggestions: [],
-          metaDescriptionSuggestions: [],
-          recommendedKeywords: [],
-          additionalRecommendations: [],
-          contentScore: 0,
-          keywordDensity: {},
-          readabilityScore: 0,
-          contentImprovementSuggestions: [],
-          suggestedHeadingStructure: [],
-          recommendedContentLength: 0,
-          // Blog-specific fields
-          blogTitleSuggestions: [],
-          introductionSuggestions: [],
-          conclusionSuggestions: [],
-          blogOutlineStructure: [],
-          engagementTips: [],
-          readingTimeEstimate: 0,
-          categoryRelevance: 0,
-          targetAudience: "Analysis Error",
-          searchIntent: "Analysis Error",
           error: true, 
           rawResponse: text,
           message: 'Received non-JSON response from AI' 
@@ -479,7 +590,6 @@ async function analyzeBlogWithGemini(blogData, content, requestContentSuggestion
     } catch (aiError) {
       console.error('Error generating blog analysis with AI:', aiError);
       responseData = {
-        seoScore: 0,
         error: true,
         message: 'Error generating blog SEO analysis with AI',
         details: aiError.message
@@ -490,12 +600,76 @@ async function analyzeBlogWithGemini(blogData, content, requestContentSuggestion
   } catch (error) {
     console.error('Error in analyzeBlogWithGemini:', error);
     return { 
-      seoScore: 0,
       error: true, 
       message: error.message || 'Failed to analyze blog with Gemini' 
     };
   }
 }
+
+// Endpoint to analyze SEO for a blog post
+router.post('/analyze-blog', auth, async (req, res) => {
+  try {
+    const { blogData, content, requestContentSuggestions } = req.body;
+    
+    // Ensure blogData exists
+    if (!blogData) {
+      return sendApiResponse(res, { error: true, message: 'Missing blogData in request body' }, 400);
+    }
+    
+    let analysis;
+    try {
+      // Get raw analysis from AI
+      const rawAnalysis = await analyzeBlogWithGemini(blogData, content, requestContentSuggestions);
+      
+      if (rawAnalysis && !rawAnalysis.error) {
+        // Flatten the nested structure
+        let flattenedData = {};
+        
+        // Check for nested structure and flatten it
+        if (rawAnalysis["Overall Blog SEO Analysis"]) {
+          flattenedData = { ...flattenedData, ...rawAnalysis["Overall Blog SEO Analysis"] };
+        }
+        
+        if (rawAnalysis["Blog Content Optimization Analysis"]) {
+          flattenedData = { ...flattenedData, ...rawAnalysis["Blog Content Optimization Analysis"] };
+        }
+        
+        if (rawAnalysis["Blog-Specific Content Enhancement"]) {
+          flattenedData = { ...flattenedData, ...rawAnalysis["Blog-Specific Content Enhancement"] };
+        }
+        
+        // If no nested structure found, use the raw analysis
+        if (Object.keys(flattenedData).length === 0) {
+          flattenedData = rawAnalysis;
+        }
+        
+        // Now normalize the flattened data
+        analysis = normalizeBlogResponseData(flattenedData);
+      } else {
+        // Handle case where analyzeBlogWithGemini returned an error structure
+        analysis = rawAnalysis;
+      }
+    } catch (aiError) {
+      console.error('Error in AI blog analysis step:', aiError);
+      analysis = { 
+        error: true, 
+        message: 'AI blog analysis failed',
+        details: aiError.message
+      };
+    }
+    
+    // Send response using our helper function
+    return sendApiResponse(res, { analysis });
+  } catch (error) {
+    console.error('Error in blog SEO analysis endpoint:', error);
+    // Send error response using our helper function
+    return sendApiResponse(res, { 
+      error: true, 
+      message: 'Failed to analyze blog SEO data',
+      details: error.message
+    }, 500);
+  }
+});
 
 // Endpoint to analyze SEO for a page
 router.post('/analyze', auth, async (req, res) => {
@@ -521,14 +695,23 @@ router.post('/analyze', auth, async (req, res) => {
     try {
       // Pass both pageData and content to the analysis function
       const rawAnalysis = await analyzeWithGemini(pageData, content);
+      
       // Apply normalization here
       if (rawAnalysis && !rawAnalysis.error) {
-         analysis = normalizeResponseData(rawAnalysis);
+        // Check if response has nested structure and flatten it
+        if (rawAnalysis["Overall SEO Analysis"] || rawAnalysis["Content Optimization Analysis"]) {
+          const flattenedData = {
+            ...rawAnalysis["Overall SEO Analysis"] || {},
+            ...rawAnalysis["Content Optimization Analysis"] || {}
+          };
+          analysis = normalizeResponseData(flattenedData);
+        } else {
+          analysis = normalizeResponseData(rawAnalysis);
+        }
       } else {
-         // Handle case where analyzeWithGemini returned an error structure
-         analysis = rawAnalysis; 
+        // Handle case where analyzeWithGemini returned an error structure
+        analysis = rawAnalysis; 
       }
-
     } catch (aiError) {
       console.error('Error in AI analysis step:', aiError);
       analysis = { 
@@ -552,47 +735,52 @@ router.post('/analyze', auth, async (req, res) => {
 });
 
 // Endpoint to analyze SEO for a blog post
-router.post('/analyze-blog', auth, async (req, res) => {
-  try {
-    const { blogData, content, requestContentSuggestions } = req.body;
+// router.post('/analyze-blog', auth, async (req, res) => {
+//   try {
+//     const { blogData, content, requestContentSuggestions } = req.body;
     
-    // Ensure blogData exists
-    if (!blogData) {
-      return sendApiResponse(res, { error: true, message: 'Missing blogData in request body' }, 400);
-    }
+//     // Ensure blogData exists
+//     if (!blogData) {
+//       return sendApiResponse(res, { error: true, message: 'Missing blogData in request body' }, 400);
+//     }
     
-    let analysis;
-    try {
-      // Pass blogData and content to the specialized blog analysis function
-      const rawAnalysis = await analyzeBlogWithGemini(blogData, content, requestContentSuggestions);
-      // Apply blog-specific normalization here
-      if (rawAnalysis && !rawAnalysis.error) {
-         analysis = normalizeBlogResponseData(rawAnalysis);
-      } else {
-         // Handle case where analyzeBlogWithGemini returned an error structure
-         analysis = rawAnalysis;
-      }
-    } catch (aiError) {
-      console.error('Error in AI blog analysis step:', aiError);
-      analysis = { 
-        error: true, 
-        message: 'AI blog analysis failed',
-        details: aiError.message
-      };
-    }
+//     let analysis;
+//     try {
+//       // Pass blogData and content to the specialized blog analysis function
+//       const rawAnalysis = await analyzeBlogWithGemini(blogData, content, requestContentSuggestions);
+//       // Apply blog-specific normalization here
+//       if (rawAnalysis && !rawAnalysis.error) {
+//          analysis = normalizeBlogResponseData(rawAnalysis);
+//       } else {
+//          // Handle case where analyzeBlogWithGemini returned an error structure
+//          analysis = rawAnalysis;
+//       }
+//     } catch (aiError) {
+//       console.error('Error in AI blog analysis step:', aiError);
+//       analysis = { 
+//         error: true, 
+//         message: 'AI blog analysis failed',
+//         details: aiError.message
+//       };
+//     }
     
-    // Send response using our helper function
-    return sendApiResponse(res, { analysis });
-  } catch (error) {
-    console.error('Error in blog SEO analysis endpoint:', error);
-    // Send error response using our helper function
-    return sendApiResponse(res, { 
-      error: true, 
-      message: 'Failed to analyze blog SEO data',
-      details: error.message
-    }, 500);
-  }
-});
+//     // Send response using our helper function
+//     return sendApiResponse(res, { analysis });
+//   } catch (error) {
+//     console.error('Error in blog SEO analysis endpoint:', error);
+//     // Send error response using our helper function
+//     return sendApiResponse(res, { 
+//       error: true, 
+//       message: 'Failed to analyze blog SEO data',
+//       details: error.message
+//     }, 500);
+//   }
+// });
+// Endpoint to analyze SEO for a blog post
+// Endpoint to analyze SEO for a blog post
+
+
+
 
 // Get keyword suggestions
 router.post('/suggest-keywords', auth, async (req, res) => {
@@ -1101,5 +1289,103 @@ router.post('/generate-blog-outline', auth, async (req, res) => {
     }, 500);
   }
 });
+
+// Site SEO Analysis API
+router.post('/analyze-site', auth, async (req, res) => {
+  try {
+    const { siteData, pageData } = req.body;
+    
+    // Prepare the comprehensive prompt for site analysis
+    const prompt = `
+    As an advanced SEO specialist with expertise in site-wide optimization, analyze this website's SEO configuration:
+
+    **Site Metadata:**
+    Title: ${siteData.title || 'N/A'}
+    Meta Title: ${siteData.metaTitle || 'N/A'}
+    Meta Description: ${siteData.metaDescription || 'N/A'}
+    Meta Keywords: ${siteData.metaKeywords || 'N/A'}
+    Primary Color: ${siteData.primaryColor || 'N/A'}
+    Footer Text: ${siteData.footerText || 'N/A'}
+    Number of Pages: ${pageData?.length || 0}
+
+    **Site Structure Analysis:**
+    ${pageData ? pageData.map(page => `- ${page.title} (${page.slug})`).join('\n') : 'No page data provided'}
+
+    Provide the following in a single, valid JSON format:
+
+    **Overall Site SEO Analysis:**
+    1. "seoScore": number from 0-100 (overall site SEO)
+    2. "titleScore": number from 0-100
+    3. "titleAnalysis": string with analysis of site title
+    4. "titleSuggestions": array of site title suggestions
+    5. "metaDescriptionScore": number from 0-100
+    6. "metaDescriptionAnalysis": string with analysis
+    7. "metaDescriptionSuggestions": array of suggestions
+    8. "keywordsScore": number from 0-100 (based on meta keywords)
+    9. "keywordsAnalysis": string with analysis
+    10. "recommendedKeywords": array of keywords (overall suggestions)
+    11. "navigationScore": number from 0-100
+    12. "navigationAnalysis": string with recommendations
+    13. "additionalRecommendations": array of general SEO recommendations
+
+    Format your response as valid, parseable JSON only. Ensure all keys are present even if the value is null or empty array/object.
+    `;
+
+    let analysis;
+    try {
+      // Use the existing analyzeWithGemini function with our custom prompt
+      const rawAnalysis = await model.generateContent(prompt);
+      const response = await rawAnalysis.response;
+      const text = response.text();
+      
+      // Parse JSON from the response
+      const parsedData = safeJsonParse(text);
+      
+      // Apply normalization to ensure consistent data structure
+      analysis = normalizeSiteResponseData(parsedData);
+    } catch (aiError) {
+      console.error('Error in AI site analysis:', aiError);
+      analysis = { 
+        error: true, 
+        message: 'AI site analysis failed',
+        details: aiError.message
+      };
+    }
+    
+    // Send response using our helper function
+    return sendApiResponse(res, { analysis });
+  } catch (error) {
+    console.error('Error in site SEO analysis endpoint:', error);
+    return sendApiResponse(res, { 
+      error: true, 
+      message: 'Failed to analyze site SEO data',
+      details: error.message
+    }, 500);
+  }
+});
+
+// Helper function to normalize site SEO response data
+function normalizeSiteResponseData(data) {
+  // Simplified without structure and technical fields
+  const normalized = {
+    seoScore: typeof data.seoScore === 'number' ? data.seoScore : 0,
+    titleScore: typeof data.titleScore === 'number' ? data.titleScore : 0,
+    metaDescriptionScore: typeof data.metaDescriptionScore === 'number' ? data.metaDescriptionScore : 0,
+    keywordsScore: typeof data.keywordsScore === 'number' ? data.keywordsScore : 0,
+    navigationScore: typeof data.navigationScore === 'number' ? data.navigationScore : 0,
+    
+    titleAnalysis: typeof data.titleAnalysis === 'string' ? data.titleAnalysis : "No analysis available",
+    metaDescriptionAnalysis: typeof data.metaDescriptionAnalysis === 'string' ? data.metaDescriptionAnalysis : "No analysis available",
+    keywordsAnalysis: typeof data.keywordsAnalysis === 'string' ? data.keywordsAnalysis : "No analysis available",
+    navigationAnalysis: typeof data.navigationAnalysis === 'string' ? data.navigationAnalysis : "No analysis available",
+    
+    titleSuggestions: Array.isArray(data.titleSuggestions) ? data.titleSuggestions : [],
+    metaDescriptionSuggestions: Array.isArray(data.metaDescriptionSuggestions) ? data.metaDescriptionSuggestions : [],
+    recommendedKeywords: Array.isArray(data.recommendedKeywords) ? data.recommendedKeywords : [],
+    additionalRecommendations: Array.isArray(data.additionalRecommendations) ? data.additionalRecommendations : [],
+  };
+  
+  return normalized;
+}
 
 module.exports = router; 
