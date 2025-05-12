@@ -149,6 +149,7 @@ exports.getBySlug = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const { 
+      isIndexing,
       title, 
       content, 
       excerpt, 
@@ -223,7 +224,7 @@ exports.create = async (req, res) => {
       }
     });
 
-    if (status === 'published') {
+    if (status === 'published' && isIndexing) {
       try {
         await googleIndexingService.notifyGoogleAboutBlog(blog, 'create');
       } catch (indexingError) {
@@ -410,6 +411,7 @@ exports.update = async (req, res) => {
   try {
     const { id } = req.params;
     const { 
+      isIndexing,
       title, 
       content, 
       excerpt, 
@@ -521,8 +523,10 @@ exports.update = async (req, res) => {
     });
     
     // Handle Google indexing notifications
+    console.log('slugChanged', slugChanged)
     try {
-      if (isBeingPublished || (blog.status === 'published' && slugChanged)) {
+      //isBeingPublished ||
+      if ( blog.status === 'published' && slugChanged && isIndexing) {
         // Notify about creation/update when published or URL changed
         await googleIndexingService.notifyGoogleAboutBlog(blog, 'update');
       } else if (isBeingUnpublished) {

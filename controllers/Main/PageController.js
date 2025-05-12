@@ -114,7 +114,7 @@ exports.getPage = async (req, res) => {
 // Create a new page
 exports.createPage = async (req, res) => {
     try {
-        const { title, slug, description, metaTitle, metaKeywords, ogImage, featuredImage, blocks, isMainPage, canonicalUrl, structuredData, robots, id, ...restData } = req.body;
+        const {isIndexing, title, slug, description, metaTitle, metaKeywords, ogImage, featuredImage, blocks, isMainPage, canonicalUrl, structuredData, robots, id, ...restData  } = req.body;
         
         // Check if slug is unique
         const existingPage = await prisma.page.findUnique({
@@ -189,7 +189,7 @@ exports.createPage = async (req, res) => {
         });
         
         // Notify Google about the new page
-        if (req.body.status === 'published') {
+        if (req.body.status === 'published' && isIndexing) {
             await googleIndexingService.notifyGoogleAboutPage(createdPage, 'create');
         }
         
@@ -352,6 +352,7 @@ exports.updatePage = async (req, res) => {
     try {
         const { id: pageId } = req.params;
         const { 
+            isIndexing,
             title, 
             slug, 
             description, 
@@ -577,7 +578,7 @@ exports.updatePage = async (req, res) => {
         });
         
         // Notify Google about the updated page
-        if (result.status === 'published') {
+        if (result.status === 'published' && isIndexing) {
             try {
                 await googleIndexingService.notifyGoogleAboutPage(result, 'update');
             } catch (indexingError) {
