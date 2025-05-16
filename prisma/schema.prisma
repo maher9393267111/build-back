@@ -283,5 +283,37 @@ model FormSubmission {
   @@index([status])
 }
 
+model PageView {
+  id        Int      @id @default(autoincrement())
+  path      String   // The path of the page viewed, e.g., /about, /blog/my-post
+  timestamp DateTime @default(now()) // When the page was viewed
+
+  // Optional fields you might consider adding later:
+  // ipAddress String?   // Hashed IP address for privacy-conscious unique visitor estimation
+  // userAgent String?   // User agent string
+  // userId    Int?      // If the user is logged in
+  // user      User?     @relation(fields: [userId], references: [id])
+  // pageId    Int?      // Link to a specific Page model if applicable
+  // page      Page?     @relation(fields: [pageId], references: [id])
+
+  @@index([path])
+  @@index([timestamp])
+}
+
+model PageActivity {
+  id        Int      @id @default(autoincrement())
+  pageId    Int?
+  pageName  String
+  action    String   // "created", "updated", "deleted"
+  timestamp DateTime @default(now())
+  // userId    Int?
+  // user      User?    @relation(fields: [userId], references: [id])
+  // page      Page?    @relation(fields: [pageId], references: [id])
+
+  @@index([pageId])
+  @@index([timestamp])
+  @@index([action])
+}
+
 
 

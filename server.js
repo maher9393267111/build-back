@@ -24,6 +24,7 @@ const sitemapRouter = require('./routes/sitemap');
 const mediaRouter = require('./routes/media');
 const seoRouter = require('./routes/seo');
 const siteSettingsRouter = require('./routes/siteSettings');
+const analyticsRouter = require('./routes/analytics');
 
 
 // Import Controllers
@@ -53,6 +54,7 @@ app.use('/api', sitemapRouter);
 app.use('/api', mediaRouter);
 app.use('/api', seoRouter);
 app.use('/api', siteSettingsRouter);
+app.use('/api/analytics', analyticsRouter);
 
 //add main ednpiutn get hello world
 app.get("/", (req, res) => {
