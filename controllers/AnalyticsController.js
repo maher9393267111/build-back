@@ -758,3 +758,68 @@ exports.getGlobalStats = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch global statistics', details: error.message });
     }
 };
+
+
+
+
+// Reset form submissions - sets all submissions back to "new" status
+exports.resetFormSubmissions = async (req, res) => {
+    try {
+        const updatedSubmissions = await prisma.formSubmission.deleteMany({});
+
+        res.status(200).json({
+            message: 'Form submissions reset successfully',
+            updatedCount: updatedSubmissions.count
+        });
+    } catch (error) {
+        console.error('Error resetting form submissions:', error);
+        res.status(500).json({ error: 'Failed to reset form submissions', details: error.message });
+    }
+};
+
+// Reset form submissions for a specific form
+exports.resetFormSubmissionsByFormId = async (req, res) => {
+    try {
+        const { formId } = req.params;
+
+        if (!formId) {
+            return res.status(400).json({ error: 'Form ID is required' });
+        }
+
+        const updatedSubmissions = await prisma.formSubmission.updateMany({
+            where: {
+                formId: parseInt(formId),
+                status: {
+                    not: 'new'
+                }
+            },
+            data: {
+                status: 'new',
+                updatedAt: new Date()
+            }
+        });
+
+        res.status(200).json({
+            message: `Form submissions for form ${formId} reset successfully`,
+            updatedCount: updatedSubmissions.count
+        });
+    } catch (error) {
+        console.error('Error resetting form submissions:', error);
+        res.status(500).json({ error: 'Failed to reset form submissions', details: error.message });
+    }
+};
+
+// Reset page activities - clears all page activity logs
+exports.resetPageActivities = async (req, res) => {
+    try {
+        const deletedActivities = await prisma.pageActivity.deleteMany({});
+
+        res.status(200).json({
+            message: 'Page activities reset successfully',
+            deletedCount: deletedActivities.count
+        });
+    } catch (error) {
+        console.error('Error resetting page activities:', error);
+        res.status(500).json({ error: 'Failed to reset page activities', details: error.message });
+    }
+};
