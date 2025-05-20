@@ -315,5 +315,33 @@ model PageActivity {
   @@index([action])
 }
 
+model PrivacyPolicy {
+  id          Int      @id @default(autoincrement())
+  seoTitle    String?
+  description String? // Markdown content
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  heroSubTitle String?
+  heroImage   Json?
+}
 
 
+model TermsAndConditions {
+  id          Int      @id @default(autoincrement())
+  seoTitle    String?
+  description String? // Markdown content
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  heroSubTitle String?
+  heroImage   Json?
+}
+
+model CookiePolicy {
+  id          Int      @id @default(autoincrement())
+  seoTitle    String?
+  description String? // Markdown content
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  heroSubTitle String?
+  heroImage   Json?
+}
